@@ -10,14 +10,21 @@ if (!isLoggedIn() || !isAdmin()) {
 $error = '';
 $success = '';
 
-// Get current settings
-$settings_file = '../config/settings.json';
+// Get current settings from database
 $settings = [];
+try {
+    $stmt = $conn->prepare("SELECT setting_key, setting_value FROM settings ORDER BY setting_key");
+    $stmt->execute();
+    $db_settings = $stmt->fetchAll();
+    foreach ($db_settings as $setting) {
+        $settings[$setting['setting_key']] = $setting['setting_value'];
+    }
+} catch (Exception $e) {
+    $error = "Could not load settings: " . $e->getMessage();
+}
 
-if (file_exists($settings_file)) {
-    $settings = json_decode(file_get_contents($settings_file), true);
-} else {
-    // Default settings
+// Default settings if database is empty
+if (empty($settings)) {
     $settings = [
         'website_name' => 'SASTO Hub',
         'website_tagline' => 'Your Online Marketplace',
@@ -41,63 +48,69 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_settings'])) {
     if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
         $error = 'Security token invalid. Please try again.';
     } else {
-        $new_settings = $settings;
-        
-        // Update text fields
-        $new_settings['website_name'] = sanitize($_POST['website_name'] ?? '');
-        $new_settings['website_tagline'] = sanitize($_POST['website_tagline'] ?? '');
-        $new_settings['footer_name'] = sanitize($_POST['footer_name'] ?? '');
-        $new_settings['copyright_text'] = sanitize($_POST['copyright_text'] ?? '');
-        $new_settings['contact_email'] = sanitize($_POST['contact_email'] ?? '');
-        $new_settings['contact_phone'] = sanitize($_POST['contact_phone'] ?? '');
-        $new_settings['address'] = sanitize($_POST['address'] ?? '');
-        $new_settings['primary_color'] = sanitize($_POST['primary_color'] ?? '');
-        $new_settings['facebook_url'] = sanitize($_POST['facebook_url'] ?? '');
-        $new_settings['twitter_url'] = sanitize($_POST['twitter_url'] ?? '');
-        $new_settings['instagram_url'] = sanitize($_POST['instagram_url'] ?? '');
-        $new_settings['youtube_url'] = sanitize($_POST['youtube_url'] ?? '');
-        
-        // Handle file uploads
-        if (!empty($_FILES['header_logo']['name'])) {
-            $upload_dir = '../assets/images/';
-            $file = $_FILES['header_logo'];
+        try {
+            $new_settings = $settings;
             
-            if (in_array($file['type'], ['image/jpeg', 'image/png', 'image/webp'])) {
-                $filename = 'logo_header_' . time() . '.' . pathinfo($file['name'], PATHINFO_EXTENSION);
-                if (move_uploaded_file($file['tmp_name'], $upload_dir . $filename)) {
-                    $new_settings['header_logo'] = '/assets/images/' . $filename;
-                } else {
-                    $error = 'Failed to upload header logo';
-                }
-            } else {
-                $error = 'Header logo must be JPG, PNG, or WebP';
-            }
-        }
-        
-        if (!empty($_FILES['footer_logo']['name'])) {
-            $upload_dir = '../assets/images/';
-            $file = $_FILES['footer_logo'];
+            // Update text fields
+            $new_settings['website_name'] = sanitize($_POST['website_name'] ?? '');
+            $new_settings['website_tagline'] = sanitize($_POST['website_tagline'] ?? '');
+            $new_settings['footer_name'] = sanitize($_POST['footer_name'] ?? '');
+            $new_settings['copyright_text'] = sanitize($_POST['copyright_text'] ?? '');
+            $new_settings['contact_email'] = sanitize($_POST['contact_email'] ?? '');
+            $new_settings['contact_phone'] = sanitize($_POST['contact_phone'] ?? '');
+            $new_settings['address'] = sanitize($_POST['address'] ?? '');
+            $new_settings['primary_color'] = sanitize($_POST['primary_color'] ?? '');
+            $new_settings['facebook_url'] = sanitize($_POST['facebook_url'] ?? '');
+            $new_settings['twitter_url'] = sanitize($_POST['twitter_url'] ?? '');
+            $new_settings['instagram_url'] = sanitize($_POST['instagram_url'] ?? '');
+            $new_settings['youtube_url'] = sanitize($_POST['youtube_url'] ?? '');
             
-            if (in_array($file['type'], ['image/jpeg', 'image/png', 'image/webp'])) {
-                $filename = 'logo_footer_' . time() . '.' . pathinfo($file['name'], PATHINFO_EXTENSION);
-                if (move_uploaded_file($file['tmp_name'], $upload_dir . $filename)) {
-                    $new_settings['footer_logo'] = '/assets/images/' . $filename;
+            // Handle file uploads
+            if (!empty($_FILES['header_logo']['name'])) {
+                $upload_dir = '../assets/images/';
+                $file = $_FILES['header_logo'];
+                
+                if (in_array($file['type'], ['image/jpeg', 'image/png', 'image/webp'])) {
+                    $filename = 'logo_header_' . time() . '.' . pathinfo($file['name'], PATHINFO_EXTENSION);
+                    if (move_uploaded_file($file['tmp_name'], $upload_dir . $filename)) {
+                        $new_settings['header_logo'] = '/assets/images/' . $filename;
+                    } else {
+                        $error = 'Failed to upload header logo';
+                    }
                 } else {
-                    $error = 'Failed to upload footer logo';
+                    $error = 'Header logo must be JPG, PNG, or WebP';
                 }
-            } else {
-                $error = 'Footer logo must be JPG, PNG, or WebP';
             }
-        }
-        
-        // Save settings if no error
-        if (empty($error)) {
-            if (file_put_contents($settings_file, json_encode($new_settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES))) {
+            
+            if (!empty($_FILES['footer_logo']['name']) && empty($error)) {
+                $upload_dir = '../assets/images/';
+                $file = $_FILES['footer_logo'];
+                
+                if (in_array($file['type'], ['image/jpeg', 'image/png', 'image/webp'])) {
+                    $filename = 'logo_footer_' . time() . '.' . pathinfo($file['name'], PATHINFO_EXTENSION);
+                    if (move_uploaded_file($file['tmp_name'], $upload_dir . $filename)) {
+                        $new_settings['footer_logo'] = '/assets/images/' . $filename;
+                    } else {
+                        $error = 'Failed to upload footer logo';
+                    }
+                } else {
+                    $error = 'Footer logo must be JPG, PNG, or WebP';
+                }
+            }
+            
+            // Save settings to database if no error
+            if (empty($error)) {
+                $stmt = $conn->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+                
+                foreach ($new_settings as $key => $value) {
+                    $stmt->execute([$key, $value, $value]);
+                }
+                
                 $settings = $new_settings;
                 $success = 'Settings saved successfully!';
-            } else {
-                $error = 'Failed to save settings. Please check file permissions.';
             }
+        } catch (Exception $e) {
+            $error = 'Failed to save settings: ' . $e->getMessage();
         }
     }
 }

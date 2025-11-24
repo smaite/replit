@@ -123,6 +123,7 @@ include '../includes/header.php';
                             <?php echo $_SESSION['user_role']; ?>
                         </span>
                     </div>
+                    <a href="/auth/logout.php" class="text-black-400 hover:text-red-400 rounded-full"><i class="fas fa-sign-out-alt"></i> Logout</a>
                 </div>
                 
                 <div class="border-t pt-4">
@@ -239,4 +240,4 @@ include '../includes/header.php';
     </div>
 </div>
 
-<?php include '../includes/footer.php'; ?>
+

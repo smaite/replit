@@ -50,6 +50,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$existing_vendor) {
         } elseif (empty($_FILES['national_id_front']['name']) || empty($_FILES['national_id_back']['name']) || 
                   empty($_FILES['pan_vat_document']['name']) || empty($_FILES['business_registration']['name'])) {
             $error = 'Please upload all required documents';
+        } elseif (empty($_POST['accept_terms']) || empty($_POST['accept_privacy']) || empty($_POST['confirm_information'])) {
+            $error = 'You must accept the Terms of Use, Privacy Policy, and confirm the information provided';
         } else {
             // Validate document uploads
             $upload_dir = '../uploads/vendor-documents/';
@@ -384,6 +386,38 @@ include '../includes/header.php';
                         <li>✓ You'll receive email notification once your application is approved</li>
                         <li>✓ You can start uploading products after approval</li>
                     </ul>
+                </div>
+                
+                <!-- Terms & Conditions -->
+                <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+                    <div class="space-y-3">
+                        <label class="flex items-start gap-3 cursor-pointer">
+                            <input type="checkbox" name="accept_terms" required 
+                                   class="mt-1 h-4 w-4 text-primary rounded border-gray-300 focus:outline-none">
+                            <span class="text-sm text-gray-700">
+                                I agree to the <a href="/pages/terms-of-use.php" target="_blank" class="text-primary font-semibold hover:underline">Terms of Use</a>
+                                <span class="text-red-500">*</span>
+                            </span>
+                        </label>
+                        
+                        <label class="flex items-start gap-3 cursor-pointer">
+                            <input type="checkbox" name="accept_privacy" required 
+                                   class="mt-1 h-4 w-4 text-primary rounded border-gray-300 focus:outline-none">
+                            <span class="text-sm text-gray-700">
+                                I have read and agree to the <a href="/pages/privacy-policy.php" target="_blank" class="text-primary font-semibold hover:underline">Privacy Policy</a>
+                                <span class="text-red-500">*</span>
+                            </span>
+                        </label>
+                        
+                        <label class="flex items-start gap-3 cursor-pointer">
+                            <input type="checkbox" name="confirm_information" required 
+                                   class="mt-1 h-4 w-4 text-primary rounded border-gray-300 focus:outline-none">
+                            <span class="text-sm text-gray-700">
+                                I confirm that all information provided is accurate and true to the best of my knowledge
+                                <span class="text-red-500">*</span>
+                            </span>
+                        </label>
+                    </div>
                 </div>
                 
                 <button type="submit" 

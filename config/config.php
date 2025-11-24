@@ -114,15 +114,31 @@ function validateInput($data, $type = 'text', $maxLength = 255) {
     }
 }
 
-// Website Settings Management
+// Website Settings Management - Load from Database
 function getWebsiteSettings() {
-    $settings_file = __DIR__ . '/settings.json';
+    global $conn;
     
-    if (file_exists($settings_file)) {
-        return json_decode(file_get_contents($settings_file), true) ?? getDefaultSettings();
+    $settings = [];
+    try {
+        if (isset($conn) && $conn) {
+            $stmt = $conn->prepare("SELECT setting_key, setting_value FROM settings ORDER BY setting_key");
+            $stmt->execute();
+            $db_settings = $stmt->fetchAll();
+            
+            foreach ($db_settings as $setting) {
+                $settings[$setting['setting_key']] = $setting['setting_value'];
+            }
+        }
+    } catch (Exception $e) {
+        // Fallback to defaults if database fails
     }
     
-    return getDefaultSettings();
+    // Merge with defaults if any keys missing
+    if (empty($settings) || count($settings) < 10) {
+        $settings = array_merge(getDefaultSettings(), $settings);
+    }
+    
+    return $settings;
 }
 
 function getDefaultSettings() {
@@ -150,7 +166,21 @@ function getSetting($key, $default = null) {
 }
 
 function saveWebsiteSettings($settings) {
-    $settings_file = __DIR__ . '/settings.json';
-    return file_put_contents($settings_file, json_encode($settings, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) !== false;
+    global $conn;
+    
+    try {
+        if (isset($conn) && $conn) {
+            $stmt = $conn->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+            
+            foreach ($settings as $key => $value) {
+                $stmt->execute([$key, $value, $value]);
+            }
+            return true;
+        }
+    } catch (Exception $e) {
+        return false;
+    }
+    
+    return false;
 }
 ?>
