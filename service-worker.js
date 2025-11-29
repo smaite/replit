@@ -1,50 +1,20 @@
-const CACHE_NAME = 'sastohub-v1';
-
-const urlsToCache = [
-  '/assets/css/style.css',
-  '/assets/js/main.js',
-  '/manifest.json'
-];
-
-// Install event
-self.addEventListener('install', event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(urlsToCache);
-    })
-  );
-});
-
-// Fetch event (DO NOT CACHE PHP or HTML)
+// Fetch event (DO NOT CACHE PHP, HTML, IMAGES)
 self.addEventListener('fetch', event => {
   const req = event.request;
   const url = req.url;
 
-  // Skip PHP and HTML files (dynamic pages)
-  if (url.endsWith('.php') || url.endsWith('.html') || url.includes('/api/')) {
+  // Skip all dynamic pages + images
+  const skipExtensions = ['.php', '.html', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
+
+  if (skipExtensions.some(ext => url.endsWith(ext))) {
     event.respondWith(fetch(req)); // always fresh
     return;
   }
 
-  // Static files only → cached
+  // Cache static files only (CSS/JS/manifest)
   event.respondWith(
     caches.match(req).then(response => {
       return response || fetch(req);
-    })
-  );
-});
-
-// Activate event
-self.addEventListener('activate', event => {
-  event.waitUntil(
-    caches.keys().then(keys => {
-      return Promise.all(
-        keys.map(key => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
-      );
     })
   );
 });
