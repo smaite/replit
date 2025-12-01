@@ -1,3 +1,4 @@
 vendor/
 .local/
 /app
+/example_app
