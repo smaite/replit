@@ -4,7 +4,7 @@ self.addEventListener('fetch', event => {
   const url = req.url;
 
   // Skip all dynamic pages + images
-  const skipExtensions = ['.php', '.html', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'];
+  const skipExtensions = ['.php', '.html', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.css'];
 
   if (skipExtensions.some(ext => url.endsWith(ext))) {
     event.respondWith(fetch(req)); // always fresh
