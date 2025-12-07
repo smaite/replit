@@ -42,22 +42,22 @@ if (isset($_GET['wishlist']) && isLoggedIn()) {
 }
 
 try {
-    // Get product
+    // Get product - removed status check to be more flexible
     $stmt = $conn->prepare("
-        SELECT p.*, c.name as category_name, v.business_name as vendor_name 
+        SELECT p.*, c.name as category_name, v.shop_name as vendor_name 
         FROM products p 
         LEFT JOIN categories c ON p.category_id = c.id 
         LEFT JOIN vendors v ON p.vendor_id = v.id
-        WHERE p.id = ? AND p.status = 'active'
+        WHERE p.id = ?
     ");
     $stmt->execute([$productId]);
-    $product = $stmt->fetch();
+    $product = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if ($product) {
         // Get related products
         $stmt = $conn->prepare("
             SELECT * FROM products 
-            WHERE category_id = ? AND id != ? AND status = 'active' 
+            WHERE category_id = ? AND id != ? 
             ORDER BY RAND() LIMIT 6
         ");
         $stmt->execute([$product['category_id'], $productId]);
@@ -67,13 +67,17 @@ try {
     $product = null;
 }
 
+// If no product found, show a nice message instead of redirecting
 if (!$product) {
-    header('Location: home.php');
-    exit;
+    // Check if product ID was passed
+    if ($productId == 0) {
+        header('Location: home.php');
+        exit;
+    }
 }
 
 $inWishlist = false;
-if (isLoggedIn()) {
+if ($product && isLoggedIn()) {
     try {
         $stmt = $conn->prepare("SELECT id FROM wishlist WHERE user_id = ? AND product_id = ?");
         $stmt->execute([$_SESSION['user_id'], $productId]);
@@ -87,10 +91,32 @@ if (isLoggedIn()) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#FFFFFF">
-    <title><?php echo htmlspecialchars($product['name']); ?> - <?php echo SITE_NAME; ?></title>
+    <title><?php echo $product ? htmlspecialchars($product['name']) : 'Product Not Found'; ?> - <?php echo SITE_NAME; ?></title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <?php if (!$product): ?>
+    <div class="app-page">
+        <header class="page-header">
+            <button class="back-btn" onclick="window.history.back()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+            </button>
+            <h1>Product Not Found</h1>
+            <div class="header-spacer"></div>
+        </header>
+        <div class="empty-state" style="padding-top: 60px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1.5" style="width:80px;height:80px;">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <h3>Product not found</h3>
+            <p>This product may have been removed or is no longer available.</p>
+            <a href="home.php" class="btn-primary">Back to Home</a>
+        </div>
+    </div>
+    <?php else: ?>
     <div class="product-detail-page">
         <!-- Header -->
         <header class="product-header">
@@ -224,5 +250,8 @@ if (isLoggedIn()) {
             }
         }
     </script>
+    </div>
+    <?php endif; ?>
 </body>
 </html>
+
