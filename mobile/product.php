@@ -42,12 +42,14 @@ if (isset($_GET['wishlist']) && isLoggedIn()) {
 }
 
 try {
-    // Get product - removed status check to be more flexible
+    // Get product with image from product_images table
     $stmt = $conn->prepare("
-        SELECT p.*, c.name as category_name, v.shop_name as vendor_name 
+        SELECT p.*, c.name as category_name, v.shop_name as vendor_name,
+               pi.image_path as image
         FROM products p 
         LEFT JOIN categories c ON p.category_id = c.id 
         LEFT JOIN vendors v ON p.vendor_id = v.id
+        LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1
         WHERE p.id = ?
     ");
     $stmt->execute([$productId]);
@@ -197,7 +199,7 @@ if ($product && isLoggedIn()) {
         <!-- Product Image -->
         <div class="product-image-container">
             <?php if (!empty($product['image'])): ?>
-                <img src="../uploads/products/<?php echo htmlspecialchars($product['image']); ?>" 
+                <img src="..<?php echo htmlspecialchars($product['image']); ?>" 
                      alt="<?php echo htmlspecialchars($product['name']); ?>" class="product-main-image">
             <?php else: ?>
                 <div class="placeholder-img large">
