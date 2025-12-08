@@ -1,18 +1,30 @@
 <?php
 /**
  * Mobile Categories Page - SASTO Hub
- * Grid view of all product categories
+ * Grid view of all product categories with subcategories
  */
 require_once '../config/config.php';
 require_once '../config/database.php';
 
-// Fetch all active categories
+// Fetch all active categories (parent categories first)
 try {
-    $stmt = $conn->prepare("SELECT * FROM categories WHERE status = 'active' ORDER BY name");
+    $stmt = $conn->prepare("SELECT * FROM categories WHERE status = 'active' ORDER BY parent_id, name");
     $stmt->execute();
-    $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    $allCategories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    
+    // Organize into parent and sub categories
+    $parentCategories = [];
+    $subCategories = [];
+    foreach ($allCategories as $cat) {
+        if (empty($cat['parent_id'])) {
+            $parentCategories[] = $cat;
+        } else {
+            $subCategories[$cat['parent_id']][] = $cat;
+        }
+    }
 } catch (Exception $e) {
-    $categories = [];
+    $parentCategories = [];
+    $subCategories = [];
 }
 ?>
 <!DOCTYPE html>
@@ -39,82 +51,45 @@ try {
         
         <!-- Categories Grid -->
         <div class="categories-full-grid">
-            <?php if (!empty($categories)): ?>
-                <?php foreach ($categories as $category): ?>
+            <?php if (!empty($parentCategories)): ?>
+                <?php foreach ($parentCategories as $category): ?>
                 <a href="category.php?id=<?php echo $category['id']; ?>" class="category-full-card">
                     <div class="category-image">
                         <?php if (!empty($category['image'])): ?>
                             <img src="../uploads/categories/<?php echo htmlspecialchars($category['image']); ?>" 
                                  alt="<?php echo htmlspecialchars($category['name']); ?>">
                         <?php else: ?>
-                            <div class="placeholder-img">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="1">
-                                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                    <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                                    <polyline points="21 15 16 10 5 21"></polyline>
-                                </svg>
+                            <div class="placeholder-img" style="background: linear-gradient(135deg, #6366f1, #8b5cf6);">
+                                <span style="font-size: 24px; color: white;"><?php echo mb_substr($category['name'], 0, 1); ?></span>
                             </div>
                         <?php endif; ?>
                     </div>
                     <span><?php echo htmlspecialchars($category['name']); ?></span>
                 </a>
+                
+                <?php // Show subcategories if any ?>
+                <?php if (isset($subCategories[$category['id']])): ?>
+                    <?php foreach ($subCategories[$category['id']] as $subCat): ?>
+                    <a href="category.php?id=<?php echo $subCat['id']; ?>" class="category-full-card sub-category">
+                        <div class="category-image">
+                            <?php if (!empty($subCat['image'])): ?>
+                                <img src="../uploads/categories/<?php echo htmlspecialchars($subCat['image']); ?>" 
+                                     alt="<?php echo htmlspecialchars($subCat['name']); ?>">
+                            <?php else: ?>
+                                <div class="placeholder-img" style="background: linear-gradient(135deg, #a5b4fc, #c4b5fd);">
+                                    <span style="font-size: 20px; color: white;"><?php echo mb_substr($subCat['name'], 0, 1); ?></span>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                        <span><?php echo htmlspecialchars($subCat['name']); ?></span>
+                    </a>
+                    <?php endforeach; ?>
+                <?php endif; ?>
                 <?php endforeach; ?>
             <?php else: ?>
-                <!-- Default categories if none in database -->
-                <a href="category.php?type=women" class="category-full-card">
-                    <div class="category-image" style="background: linear-gradient(135deg, #fce4ec, #f8bbd9);">
-                        <span style="font-size:40px;">👗</span>
-                    </div>
-                    <span>Women Clothing & Fashion</span>
-                </a>
-                <a href="category.php?type=men" class="category-full-card">
-                    <div class="category-image" style="background: linear-gradient(135deg, #e3f2fd, #bbdefb);">
-                        <span style="font-size:40px;">👔</span>
-                    </div>
-                    <span>Men Clothing & Fashion</span>
-                </a>
-                <a href="category.php?type=computer" class="category-full-card">
-                    <div class="category-image" style="background: linear-gradient(135deg, #263238, #455a64);">
-                        <span style="font-size:40px;">💻</span>
-                    </div>
-                    <span>Computer & Accessories</span>
-                </a>
-                <a href="category.php?type=auto" class="category-full-card">
-                    <div class="category-image" style="background: linear-gradient(135deg, #e0f2f1, #b2dfdb);">
-                        <span style="font-size:40px;">🚗</span>
-                    </div>
-                    <span>Automobile & Motorcycle</span>
-                </a>
-                <a href="category.php?type=kids" class="category-full-card">
-                    <div class="category-image" style="background: linear-gradient(135deg, #fff9c4, #fff59d);">
-                        <span style="font-size:40px;">🧸</span>
-                    </div>
-                    <span>Kids & toy</span>
-                </a>
-                <a href="category.php?type=sports" class="category-full-card">
-                    <div class="category-image" style="background: linear-gradient(135deg, #f5f5f5, #eeeeee);">
-                        <span style="font-size:40px;">⚽</span>
-                    </div>
-                    <span>Sports & outdoor</span>
-                </a>
-                <a href="category.php?type=jewelry" class="category-full-card">
-                    <div class="category-image" style="background: linear-gradient(135deg, #fbe9e7, #ffccbc);">
-                        <span style="font-size:40px;">💎</span>
-                    </div>
-                    <span>Jewelry & Watches</span>
-                </a>
-                <a href="category.php?type=phones" class="category-full-card">
-                    <div class="category-image" style="background: linear-gradient(135deg, #e8eaf6, #c5cae9);">
-                        <span style="font-size:40px;">📱</span>
-                    </div>
-                    <span>Cellphones & Tabs</span>
-                </a>
-                <a href="category.php?type=beauty" class="category-full-card">
-                    <div class="category-image" style="background: linear-gradient(135deg, #e0f7fa, #b2ebf2);">
-                        <span style="font-size:40px;">💄</span>
-                    </div>
-                    <span>Beauty, Health & Hair</span>
-                </a>
+                <div class="empty-state" style="grid-column: 1/-1; padding: 40px; text-align: center;">
+                    <p style="color: #666;">No categories available</p>
+                </div>
             <?php endif; ?>
         </div>
         

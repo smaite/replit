@@ -83,13 +83,20 @@ if ($user) {
     $_SESSION['user_role'] = $user['role'];
     $_SESSION['user_verified'] = true;
     
+    // Check if came from mobile and redirect back there
+    $redirectUrl = '/';
+    if (isset($_SESSION['login_from_mobile']) && $_SESSION['login_from_mobile']) {
+        $redirectUrl = '/mobile/home.php';
+        unset($_SESSION['login_from_mobile']);
+    }
+    
     // Redirect based on role
     if ($user['role'] === ROLE_ADMIN) {
         redirect('/admin/');
     } elseif ($user['role'] === ROLE_VENDOR) {
-        redirect('/vendor/');
+        redirect('/seller/');
     } else {
-        redirect('/');
+        redirect($redirectUrl);
     }
 } else {
     // Check if email already exists (linked to regular account)
@@ -110,7 +117,10 @@ if ($user) {
         $_SESSION['user_role'] = $existing_user['role'];
         $_SESSION['user_verified'] = true;
         
-        redirect('/');
+        // Check if came from mobile
+        $redirectUrl = isset($_SESSION['login_from_mobile']) && $_SESSION['login_from_mobile'] ? '/mobile/home.php' : '/';
+        unset($_SESSION['login_from_mobile']);
+        redirect($redirectUrl);
     } else {
         // Create new user account
         $stmt = $conn->prepare("INSERT INTO users (email, full_name, google_id, avatar, role) VALUES (?, ?, ?, ?, ?)");
@@ -126,7 +136,10 @@ if ($user) {
         $_SESSION['user_role'] = ROLE_CUSTOMER;
         $_SESSION['user_verified'] = true;
         
-        redirect('/');
+        // Check if came from mobile
+        $redirectUrl = isset($_SESSION['login_from_mobile']) && $_SESSION['login_from_mobile'] ? '/mobile/home.php' : '/';
+        unset($_SESSION['login_from_mobile']);
+        redirect($redirectUrl);
     }
 }
 ?>

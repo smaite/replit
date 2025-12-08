@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $name = sanitize($_POST['product_name'] ?? '');
         $description = sanitize($_POST['product_description'] ?? '');
-        $category_id = (int)($_POST['category_id'] ?? 0);
+        $category_ids = isset($_POST['category_ids']) && is_array($_POST['category_ids']) ? array_map('intval', $_POST['category_ids']) : [];
         $price = (float)($_POST['price'] ?? 0);
         $sale_price = (float)($_POST['sale_price'] ?? 0);
         $stock = (int)($_POST['stock'] ?? 0);
@@ -62,8 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $tags = sanitize($_POST['tags'] ?? '');
         
         // Validate inputs
-        if (empty($name) || empty($description) || $price <= 0 || $category_id <= 0 || $stock < 0) {
-            $error = 'Please fill in all required fields correctly.';
+        if (empty($name) || empty($description) || $price <= 0 || empty($category_ids) || $stock < 0) {
+            $error = 'Please fill in all required fields correctly (including at least one category).';
         } elseif (empty($_FILES['product_image']['name'])) {
             $error = 'Please upload a product image.';
         } else {
@@ -96,6 +96,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', $name), '-'));
                         $slug = $slug . '-' . time(); // Ensure uniqueness
                         
+                        // Use first category as primary for backward compatibility
+                        $primary_category_id = $category_ids[0];
+                        
                         // Insert product with pending verification status
                         $stmt = $conn->prepare("
                             INSERT INTO products 
@@ -105,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         $result = $stmt->execute([
                             $vendor['id'], 
-                            $category_id, 
+                            $primary_category_id, 
                             $name, 
                             $slug, 
                             $description,
@@ -118,6 +121,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         
                         if ($result) {
                             $product_id = $conn->lastInsertId();
+                            
+                            // Save all categories to product_categories junction table
+                            $cat_stmt = $conn->prepare("INSERT INTO product_categories (product_id, category_id) VALUES (?, ?)");
+                            foreach ($category_ids as $cat_id) {
+                                $cat_stmt->execute([$product_id, $cat_id]);
+                            }
                             
                             // Save product image
                             $img_stmt = $conn->prepare("
@@ -212,16 +221,22 @@ include '../includes/header.php';
                             <p class="text-sm text-gray-500 mt-1">Max 2000 characters</p>
                         </div>
 
-                        <!-- Category -->
+                        <!-- Categories (Multiple Selection) -->
                         <div class="mb-6">
-                            <label class="block text-gray-700 font-medium mb-2">Category *</label>
-                            <select name="category_id" required
-                                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
-                                <option value="">Select a category...</option>
+                            <label class="block text-gray-700 font-medium mb-2">
+                                <i class="fas fa-folder text-primary"></i> Categories *
+                            </label>
+                            <p class="text-sm text-gray-500 mb-3">Select one or more categories for your product</p>
+                            <div class="border border-gray-300 rounded-lg p-4 max-h-60 overflow-y-auto bg-gray-50">
                                 <?php foreach ($categories as $cat): ?>
-                                    <option value="<?php echo $cat['id']; ?>"><?php echo htmlspecialchars($cat['name']); ?></option>
+                                    <label class="flex items-center p-2 hover:bg-white rounded cursor-pointer">
+                                        <input type="checkbox" name="category_ids[]" value="<?php echo $cat['id']; ?>" 
+                                               class="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary">
+                                        <span class="ml-3 text-gray-700"><?php echo htmlspecialchars($cat['name']); ?></span>
+                                    </label>
                                 <?php endforeach; ?>
-                            </select>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">Hold Ctrl/Cmd to select multiple</p>
                         </div>
 
                         <!-- Pricing -->

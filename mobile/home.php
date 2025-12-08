@@ -19,13 +19,13 @@ try {
     $categories = [];
 }
 
-// Fetch featured/flash deal products
+// Fetch featured/flash deal products (only approved ones)
 try {
     $productsStmt = $conn->prepare("
         SELECT p.*, c.name as category_name 
         FROM products p 
         LEFT JOIN categories c ON p.category_id = c.id 
-        WHERE p.status = 'active' 
+        WHERE p.status = 'active' AND (p.verification_status = 'approved' OR p.verification_status IS NULL)
         ORDER BY p.created_at DESC 
         LIMIT 10
     ");
@@ -59,13 +59,13 @@ $cartCount = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
         
         <!-- Search Bar -->
         <div class="search-container">
-            <div class="search-bar">
+            <a href="search.php" class="search-bar" style="text-decoration: none;">
                 <svg viewBox="0 0 24 24" fill="none" stroke-width="2">
                     <circle cx="11" cy="11" r="8"></circle>
                     <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                 </svg>
-                <input type="text" placeholder="Search in <?php echo SITE_NAME; ?>..." id="searchInput">
-            </div>
+                <span style="color: #9E9E9E; font-size: 14px;">Search in <?php echo SITE_NAME; ?>...</span>
+            </a>
         </div>
         
         <!-- Banner Slider -->
@@ -303,11 +303,12 @@ $cartCount = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
     </div>
     
     <script>
-        // Banner Slider
+        // Banner Slider with Touch Swipe Support
         const bannerTrack = document.getElementById('bannerTrack');
         const bannerDots = document.querySelectorAll('.banner-dot');
         let currentSlide = 0;
         const totalSlides = 3;
+        let autoSlideInterval;
         
         function goToSlide(index) {
             currentSlide = index;
@@ -317,23 +318,55 @@ $cartCount = isset($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
             });
         }
         
-        // Auto slide
-        setInterval(() => {
-            currentSlide = (currentSlide + 1) % totalSlides;
-            goToSlide(currentSlide);
-        }, 4000);
+        function startAutoSlide() {
+            autoSlideInterval = setInterval(() => {
+                currentSlide = (currentSlide + 1) % totalSlides;
+                goToSlide(currentSlide);
+            }, 4000);
+        }
+        
+        function stopAutoSlide() {
+            clearInterval(autoSlideInterval);
+        }
+        
+        // Start auto slide
+        startAutoSlide();
         
         // Click on dots
         bannerDots.forEach((dot, i) => {
             dot.addEventListener('click', () => goToSlide(i));
         });
         
-        // Search functionality
-        document.getElementById('searchInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && this.value.trim()) {
-                window.location.href = 'search.php?q=' + encodeURIComponent(this.value.trim());
+        // Touch swipe support
+        let touchStartX = 0;
+        let touchEndX = 0;
+        
+        bannerTrack.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            stopAutoSlide();
+        }, { passive: true });
+        
+        bannerTrack.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+            startAutoSlide();
+        }, { passive: true });
+        
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const diff = touchStartX - touchEndX;
+            
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0) {
+                    // Swipe left - next slide
+                    currentSlide = (currentSlide + 1) % totalSlides;
+                } else {
+                    // Swipe right - previous slide
+                    currentSlide = (currentSlide - 1 + totalSlides) % totalSlides;
+                }
+                goToSlide(currentSlide);
             }
-        });
+        }
         
         // Flash deal timer
         function updateTimer() {

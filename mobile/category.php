@@ -24,10 +24,10 @@ try {
         $category = $stmt->fetch();
     }
     
-    // Get products
+    // Get products - only show approved products
     $query = "SELECT p.*, c.name as category_name FROM products p 
               LEFT JOIN categories c ON p.category_id = c.id 
-              WHERE p.status = 'active'";
+              WHERE p.status = 'active' AND (p.verification_status = 'approved' OR p.verification_status IS NULL)";
     $params = [];
     
     if ($categoryId > 0) {
