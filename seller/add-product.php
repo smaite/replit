@@ -59,6 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $sale_price = (float)($_POST['sale_price'] ?? 0);
         $stock = (int)($_POST['stock'] ?? 0);
         $sku = sanitize($_POST['sku'] ?? '');
+        $tags = sanitize($_POST['tags'] ?? '');
         
         // Validate inputs
         if (empty($name) || empty($description) || $price <= 0 || $category_id <= 0 || $stock < 0) {
@@ -98,8 +99,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         // Insert product with pending verification status
                         $stmt = $conn->prepare("
                             INSERT INTO products 
-                            (vendor_id, category_id, name, slug, description, price, sale_price, stock, sku, status, verification_status, created_at) 
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'pending', NOW())
+                            (vendor_id, category_id, name, slug, description, tags, price, sale_price, stock, sku, status, verification_status, created_at) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'pending', NOW())
                         ");
                         
                         $result = $stmt->execute([
@@ -107,7 +108,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             $category_id, 
                             $name, 
                             $slug, 
-                            $description, 
+                            $description,
+                            !empty($tags) ? $tags : NULL,
                             $price,
                             $sale_price > 0 ? $sale_price : NULL,
                             $stock,
@@ -252,6 +254,19 @@ include '../includes/header.php';
                                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
                                        placeholder="Optional product code">
                             </div>
+                        </div>
+
+                        <!-- Product Tags -->
+                        <div class="mb-6">
+                            <label class="block text-gray-700 font-medium mb-2">
+                                <i class="fas fa-tags text-primary"></i> Product Tags
+                            </label>
+                            <input type="text" name="tags" maxlength="500"
+                                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+                                   placeholder="e.g., electronics, smartphone, wireless, bluetooth">
+                            <p class="text-sm text-gray-500 mt-1">
+                                Enter comma-separated tags to improve search and recommendations
+                            </p>
                         </div>
 
                         <!-- Info Box -->

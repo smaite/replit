@@ -8,7 +8,7 @@ if (isLoggedIn()) {
     if ($role === ROLE_ADMIN) {
         redirect('/admin/');
     } elseif ($role === ROLE_VENDOR) {
-        redirect('/vendor/');
+        redirect('/seller/');
     } else {
         redirect('/');
     }
