@@ -54,14 +54,67 @@ try {
     $product = $stmt->fetch(PDO::FETCH_ASSOC);
     
     if ($product) {
-        // Get related products
-        $stmt = $conn->prepare("
-            SELECT * FROM products 
-            WHERE category_id = ? AND id != ? 
-            ORDER BY RAND() LIMIT 6
-        ");
-        $stmt->execute([$product['category_id'], $productId]);
-        $relatedProducts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        // Track product view for recommendations
+        $userId = isLoggedIn() ? $_SESSION['user_id'] : null;
+        $sessionId = session_id();
+        
+        try {
+            $stmt = $conn->prepare("
+                INSERT INTO product_views (user_id, product_id, session_id, view_count, created_at, last_viewed_at)
+                VALUES (?, ?, ?, 1, NOW(), NOW())
+                ON DUPLICATE KEY UPDATE view_count = view_count + 1, last_viewed_at = NOW()
+            ");
+            $stmt->execute([$userId, $productId, $sessionId]);
+        } catch (Exception $e) {}
+        
+        // Get similar products using TAGS + CATEGORY algorithm
+        $similarProducts = [];
+        $productTags = !empty($product['tags']) ? explode(',', $product['tags']) : [];
+        
+        if (!empty($productTags)) {
+            // Build tag matching query
+            $tagConditions = [];
+            $tagParams = [];
+            foreach ($productTags as $tag) {
+                $tag = trim($tag);
+                if (!empty($tag)) {
+                    $tagConditions[] = "p.tags LIKE ?";
+                    $tagParams[] = "%$tag%";
+                }
+            }
+            
+            if (!empty($tagConditions)) {
+                $tagQuery = "
+                    SELECT p.*, 
+                           (" . implode(" + ", array_fill(0, count($tagConditions), "(CASE WHEN p.tags LIKE ? THEN 1 ELSE 0 END)")) . ") as tag_score
+                    FROM products p 
+                    WHERE p.id != ? 
+                    AND p.status = 'active'
+                    AND (" . implode(" OR ", $tagConditions) . " OR p.category_id = ?)
+                    ORDER BY tag_score DESC, RAND()
+                    LIMIT 6
+                ";
+                
+                // Double the params for scoring + filtering
+                $allParams = array_merge($tagParams, [$productId], $tagParams, [$product['category_id']]);
+                $stmt = $conn->prepare($tagQuery);
+                $stmt->execute($allParams);
+                $similarProducts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+        }
+        
+        // Fallback to category-based if no tag matches
+        if (empty($similarProducts)) {
+            $stmt = $conn->prepare("
+                SELECT * FROM products 
+                WHERE category_id = ? AND id != ? AND status = 'active'
+                ORDER BY RAND() LIMIT 6
+            ");
+            $stmt->execute([$product['category_id'], $productId]);
+            $similarProducts = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+        
+        $relatedProducts = $similarProducts;
     }
 } catch (Exception $e) {
     $product = null;
