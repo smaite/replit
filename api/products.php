@@ -1,154 +1,181 @@
 <?php
 /**
- * Products API Endpoint
- * GET /api/products - List all products
- * GET /api/products/:id - Get product details
+ * Sasto Hub Products API
+ * Endpoints for product data
  */
-
-require_once '../config/database.php';
-require_once './config.php';
+require_once 'config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
-$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$pathSegments = explode('/', trim($path, '/'));
 
-// Extract ID if present (e.g., /api/products/123)
-$productId = null;
-if (count($pathSegments) > 2 && is_numeric($pathSegments[2])) {
-    $productId = (int)$pathSegments[2];
+switch ($method) {
+    case 'GET':
+        handleGet();
+        break;
+    default:
+        jsonError('Method not allowed', 405);
 }
 
-try {
-    if ($method === 'GET') {
-        if ($productId) {
-            // Get single product
-            $stmt = $conn->prepare("
-                SELECT 
-                    p.id, 
-                    p.name,
-                    p.slug,
-                    p.description,
-                    p.price,
-                    p.sale_price,
-                    p.image,
-                    p.category_id,
-                    p.seller_id,
-                    p.in_stock,
-                    p.ratings,
-                    p.created_at,
-                    c.name as category_name,
-                    u.name as seller_name,
-                    u.avatar as seller_avatar
-                FROM products p
-                LEFT JOIN categories c ON p.category_id = c.id
-                LEFT JOIN users u ON p.seller_id = u.id
-                WHERE p.id = ?
-                LIMIT 1
-            ");
-            $stmt->execute([$productId]);
-            $product = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($product) {
-                // Convert data types
-                $product['price'] = (float)$product['price'];
-                $product['sale_price'] = (float)$product['sale_price'];
-                $product['in_stock'] = (int)$product['in_stock'];
-                $product['ratings'] = (float)$product['ratings'];
-                
-                echo ApiResponse::success($product, 'Product fetched successfully');
-            } else {
-                echo ApiResponse::error('Product not found', 404);
-            }
-        } else {
-            // List products with pagination
-            $page = max(1, (int)ApiRequest::getParameter('page', 1));
-            $limit = min(100, max(1, (int)ApiRequest::getParameter('limit', 20)));
-            $offset = ($page - 1) * $limit;
-            $category = ApiRequest::getParameter('category');
-            $search = ApiRequest::getParameter('search');
-
-            $query = "SELECT 
-                        p.id, 
-                        p.name,
-                        p.slug,
-                        p.price,
-                        p.sale_price,
-                        p.image,
-                        p.category_id,
-                        p.seller_id,
-                        p.in_stock,
-                        p.ratings,
-                        c.name as category_name,
-                        u.name as seller_name
-                    FROM products p
-                    LEFT JOIN categories c ON p.category_id = c.id
-                    LEFT JOIN users u ON p.seller_id = u.id
-                    WHERE 1=1";
-
-            $params = [];
-
-            if ($category) {
-                $query .= " AND p.category_id = ?";
-                $params[] = $category;
-            }
-
-            if ($search) {
-                $query .= " AND (p.name LIKE ? OR p.description LIKE ?)";
-                $searchTerm = "%$search%";
-                $params[] = $searchTerm;
-                $params[] = $searchTerm;
-            }
-
-            $query .= " ORDER BY p.created_at DESC LIMIT ? OFFSET ?";
-            $params[] = $limit;
-            $params[] = $offset;
-
-            $stmt = $conn->prepare($query);
-            $stmt->execute($params);
-            $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Convert data types
-            foreach ($products as &$product) {
-                $product['price'] = (float)$product['price'];
-                $product['sale_price'] = (float)$product['sale_price'];
-                $product['in_stock'] = (int)$product['in_stock'];
-                $product['ratings'] = (float)$product['ratings'];
-            }
-
-            // Get total count
-            $countQuery = "SELECT COUNT(*) as total FROM products p WHERE 1=1";
-            if ($category) {
-                $countQuery .= " AND p.category_id = ?";
-            }
-            if ($search) {
-                $countQuery .= " AND (p.name LIKE ? OR p.description LIKE ?)";
-            }
-
-            $countStmt = $conn->prepare($countQuery);
-            $countParams = [];
-            if ($category) {
-                $countParams[] = $category;
-            }
-            if ($search) {
-                $countParams[] = "%$search%";
-                $countParams[] = "%$search%";
-            }
-            $countStmt->execute($countParams);
-            $totalCount = $countStmt->fetch(PDO::FETCH_ASSOC)['total'];
-
-            echo ApiResponse::success([
-                'items' => $products,
-                'pagination' => [
-                    'page' => $page,
-                    'limit' => $limit,
-                    'total' => (int)$totalCount,
-                    'pages' => ceil($totalCount / $limit)
-                ]
-            ], 'Products fetched successfully');
+function handleGet() {
+    global $conn;
+    
+    try {
+        // Single product by ID
+        if (isset($_GET['id'])) {
+            $productId = (int)$_GET['id'];
+            getProductById($productId);
+            return;
         }
-    } else {
-        echo ApiResponse::error('Method not allowed', 405);
+        
+        // Build query based on filters
+        $where = ["p.status = 'active'", "(p.verification_status = 'approved' OR p.verification_status IS NULL)"];
+        $params = [];
+        
+        // Filter by category
+        if (isset($_GET['category'])) {
+            $where[] = "p.category_id = ?";
+            $params[] = (int)$_GET['category'];
+        }
+        
+        // Search query
+        if (isset($_GET['search']) && !empty($_GET['search'])) {
+            $search = '%' . $_GET['search'] . '%';
+            $where[] = "(p.name LIKE ? OR p.description LIKE ? OR p.tags LIKE ?)";
+            $params[] = $search;
+            $params[] = $search;
+            $params[] = $search;
+        }
+        
+        // Featured products - check if column exists
+        if (isset($_GET['featured'])) {
+            // Just return some products without the is_featured filter
+            // Change to this if you have is_featured column: $where[] = "p.is_featured = 1";
+        }
+        
+        // Deals (products with sale price)
+        if (isset($_GET['deals'])) {
+            $where[] = "p.sale_price IS NOT NULL AND p.sale_price > 0 AND p.sale_price < p.price";
+        }
+        
+        // Pagination
+        $page = max(1, (int)($_GET['page'] ?? 1));
+        $limit = min(50, max(1, (int)($_GET['limit'] ?? 20)));
+        $offset = ($page - 1) * $limit;
+        
+        // Sorting
+        $sortOptions = [
+            'newest' => 'p.created_at DESC',
+            'price_low' => 'COALESCE(p.sale_price, p.price) ASC',
+            'price_high' => 'COALESCE(p.sale_price, p.price) DESC',
+            'popular' => 'p.view_count DESC',
+            'name' => 'p.name ASC'
+        ];
+        $sort = $sortOptions[$_GET['sort'] ?? 'newest'] ?? $sortOptions['newest'];
+        
+        $whereClause = implode(' AND ', $where);
+        
+        // Get total count
+        $countSql = "SELECT COUNT(*) FROM products p WHERE $whereClause";
+        $countStmt = $conn->prepare($countSql);
+        $countStmt->execute($params);
+        $total = (int)$countStmt->fetchColumn();
+        
+        // Get products
+        $sql = "
+            SELECT 
+                p.id,
+                p.name,
+                p.slug,
+                p.description,
+                p.price,
+                p.sale_price,
+                p.stock,
+                p.category_id,
+                c.name as category_name,
+                p.created_at,
+                (SELECT image_path FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1) as image
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.id
+            WHERE $whereClause
+            ORDER BY $sort
+            LIMIT $limit OFFSET $offset
+        ";
+        
+        $stmt = $conn->prepare($sql);
+        $stmt->execute($params);
+        $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Format prices
+        foreach ($products as &$product) {
+            $product['price'] = (float)$product['price'];
+            $product['sale_price'] = $product['sale_price'] ? (float)$product['sale_price'] : null;
+            $product['stock'] = (int)$product['stock'];
+            $product['image'] = $product['image'] ?: '/uploads/products/placeholder.jpg';
+        }
+        
+        jsonSuccess([
+            'products' => $products,
+            'pagination' => [
+                'page' => $page,
+                'limit' => $limit,
+                'total' => $total,
+                'total_pages' => ceil($total / $limit)
+            ]
+        ]);
+        
+    } catch (Exception $e) {
+        jsonError('Failed to fetch products');
     }
-} catch (Exception $e) {
-    echo ApiResponse::error('Server error: ' . $e->getMessage(), 500);
+}
+
+function getProductById($id) {
+    global $conn;
+    
+    try {
+        // Get product - simplified query without vendors
+        $stmt = $conn->prepare("
+            SELECT 
+                p.id,
+                p.name,
+                p.slug,
+                p.description,
+                p.price,
+                p.sale_price,
+                p.stock,
+                p.category_id,
+                c.name as category_name
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.id
+            WHERE p.id = ? AND p.status = 'active'
+        ");
+        $stmt->execute([$id]);
+        $product = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$product) {
+            jsonError('Product not found', 404);
+            return;
+        }
+        
+        // Get all images
+        $imgStmt = $conn->prepare("SELECT image_path FROM product_images WHERE product_id = ? ORDER BY is_primary DESC, display_order ASC");
+        $imgStmt->execute([$id]);
+        $images = $imgStmt->fetchAll(PDO::FETCH_COLUMN);
+        
+        $product['images'] = $images ?: ['/uploads/products/placeholder.jpg'];
+        $product['price'] = (float)$product['price'];
+        $product['sale_price'] = $product['sale_price'] ? (float)$product['sale_price'] : null;
+        $product['stock'] = (int)$product['stock'];
+        
+        // Try to increment view count if column exists
+        try {
+            $conn->prepare("UPDATE products SET view_count = COALESCE(view_count, 0) + 1 WHERE id = ?")->execute([$id]);
+        } catch (Exception $e) {
+            // view_count column may not exist, ignore
+        }
+        
+        jsonSuccess($product);
+        
+    } catch (Exception $e) {
+        error_log("getProductById Error: " . $e->getMessage());
+        jsonError('Failed to fetch product: ' . $e->getMessage());
+    }
 }

@@ -85,12 +85,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
             try {
                 $conn->beginTransaction();
                 
+                // Get payment method
+                $paymentMethod = $_POST['payment'] ?? 'cod';
+                
                 // Create order
                 $stmt = $conn->prepare("
-                    INSERT INTO orders (user_id, total_amount, shipping_cost, shipping_address, payment_status, status, created_at) 
-                    VALUES (?, ?, ?, ?, 'pending', 'pending', NOW())
+                    INSERT INTO orders (user_id, total_amount, shipping_cost, shipping_address, payment_method, payment_status, status, created_at) 
+                    VALUES (?, ?, ?, ?, ?, 'pending', 'pending', NOW())
                 ");
-                $stmt->execute([$userId, $subtotal, $shipping, $fullAddress]);
+                $stmt->execute([$userId, $subtotal, $shipping, $fullAddress, $paymentMethod]);
                 $orderId = $conn->lastInsertId();
                 
                 // Create order items
@@ -109,8 +112,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
                 // Clear cart
                 $_SESSION['cart'] = [];
                 
-                header("Location: order-success.php?id=$orderId");
-                exit;
+                // Redirect based on payment method
+                if ($paymentMethod === 'esewa') {
+                    // Redirect to eSewa payment page
+                    header("Location: esewa-pay.php?order=$orderId");
+                    exit;
+                } else {
+                    // COD - go to success page
+                    header("Location: order-success.php?id=$orderId");
+                    exit;
+                }
             } catch (Exception $e) {
                 $conn->rollBack();
                 $error = 'Order failed. Please try again.';
@@ -221,18 +232,84 @@ try {
                 <div class="checkout-section">
                     <h3>Payment Method</h3>
                     <div class="payment-options">
-                        <label class="payment-option active">
+                        <label class="payment-option" onclick="selectPayment(this, 'cod')">
                             <input type="radio" name="payment" value="cod" checked>
                             <span class="option-icon">💵</span>
-                            <span class="option-text">Cash on Delivery</span>
+                            <div class="option-details">
+                                <span class="option-text">Cash on Delivery</span>
+                                <span class="option-desc">Pay when you receive</span>
+                            </div>
+                            <span class="option-check">✓</span>
                         </label>
-                        <label class="payment-option disabled">
-                            <input type="radio" name="payment" value="esewa" disabled>
-                            <span class="option-icon">📱</span>
-                            <span class="option-text">eSewa (Coming Soon)</span>
+                        <label class="payment-option" onclick="selectPayment(this, 'esewa')">
+                            <input type="radio" name="payment" value="esewa">
+                            <span class="option-icon" style="background: #60BB46;">
+                                <img src="https://esewa.com.np/common/images/esewa_logo.png" alt="eSewa" 
+                                     style="width: 24px; height: 24px; object-fit: contain;"
+                                     onerror="this.parentElement.innerHTML='📱'">
+                            </span>
+                            <div class="option-details">
+                                <span class="option-text">eSewa</span>
+                                <span class="option-desc">Pay instantly with eSewa wallet</span>
+                            </div>
+                            <span class="option-check">✓</span>
                         </label>
                     </div>
                 </div>
+                
+                <style>
+                .payment-options { display: flex; flex-direction: column; gap: 12px; }
+                .payment-option {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    padding: 16px;
+                    border: 2px solid #e5e7eb;
+                    border-radius: 12px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                .payment-option:has(input:checked) {
+                    border-color: #6366f1;
+                    background: #f5f3ff;
+                }
+                .payment-option input { display: none; }
+                .option-icon {
+                    width: 44px;
+                    height: 44px;
+                    border-radius: 10px;
+                    background: #f3f4f6;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 22px;
+                }
+                .option-details { flex: 1; }
+                .option-text { display: block; font-weight: 600; color: #1f2937; }
+                .option-desc { display: block; font-size: 12px; color: #6b7280; margin-top: 2px; }
+                .option-check {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: 50%;
+                    background: #6366f1;
+                    color: white;
+                    display: none;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 14px;
+                }
+                .payment-option:has(input:checked) .option-check { display: flex; }
+                </style>
+                
+                <script>
+                function selectPayment(el, type) {
+                    document.querySelectorAll('.payment-option').forEach(opt => {
+                        opt.classList.remove('selected');
+                    });
+                    el.classList.add('selected');
+                    el.querySelector('input').checked = true;
+                }
+                </script>
                 
                 <!-- Place Order Button -->
                 <div class="place-order-section">

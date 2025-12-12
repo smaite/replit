@@ -96,7 +96,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $conn->commit();
                     
                     $_SESSION['cart_count'] = 0;
-                    redirect('/pages/order-success.php?order=' . $order_number);
+                    
+                    // Redirect based on payment method
+                    if ($payment_method === 'esewa') {
+                        // Redirect to eSewa payment page
+                        redirect('/pages/esewa-pay.php?order=' . $order_id);
+                    } else {
+                        // COD - go to success page
+                        redirect('/pages/order-success.php?order=' . $order_number);
+                    }
                     
                 } catch (Exception $e) {
                     $conn->rollBack();
@@ -158,22 +166,42 @@ include '../includes/header.php';
                         <div>
                             <label class="block text-gray-700 font-medium mb-2">Payment Method *</label>
                             <div class="space-y-3">
-                                <label class="flex items-center gap-3 p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                                <label class="payment-option flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition" onclick="selectPaymentMethod(this)">
                                     <input type="radio" name="payment_method" value="cod" checked class="w-5 h-5 text-primary">
-                                    <div>
+                                    <span class="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center text-2xl">💵</span>
+                                    <div class="flex-1">
                                         <p class="font-medium text-gray-900">Cash on Delivery</p>
                                         <p class="text-sm text-gray-600">Pay when you receive your order</p>
                                     </div>
+                                    <span class="payment-check w-6 h-6 bg-primary text-white rounded-full hidden items-center justify-center text-sm">✓</span>
                                 </label>
-                                <label class="flex items-center gap-3 p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50 opacity-50">
-                                    <input type="radio" name="payment_method" value="online" disabled class="w-5 h-5 text-primary">
-                                    <div>
-                                        <p class="font-medium text-gray-900">Online Payment</p>
-                                        <p class="text-sm text-gray-600">Coming soon (Stripe, PayPal, Khalti)</p>
+                                <label class="payment-option flex items-center gap-3 p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50 transition" onclick="selectPaymentMethod(this)">
+                                    <input type="radio" name="payment_method" value="esewa" class="w-5 h-5 text-primary">
+                                    <span class="w-12 h-12 rounded-lg flex items-center justify-center" style="background: #60BB46;">
+                                        <img src="https://esewa.com.np/common/images/esewa_logo.png" alt="eSewa" 
+                                             class="w-8 h-8 object-contain"
+                                             onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22><text x=%2216%22 y=%2220%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2210%22 font-weight=%22bold%22>eSewa</text></svg>'">
+                                    </span>
+                                    <div class="flex-1">
+                                        <p class="font-medium text-gray-900">eSewa</p>
+                                        <p class="text-sm text-gray-600">Pay instantly with eSewa wallet</p>
                                     </div>
+                                    <span class="payment-check w-6 h-6 bg-primary text-white rounded-full hidden items-center justify-center text-sm">✓</span>
                                 </label>
                             </div>
                         </div>
+                        
+                        <style>
+                        .payment-option:has(input:checked) { border-color: #6366f1; background: #f5f3ff; }
+                        .payment-option:has(input:checked) .payment-check { display: flex; }
+                        </style>
+                        <script>
+                        function selectPaymentMethod(el) {
+                            document.querySelectorAll('.payment-option').forEach(opt => opt.classList.remove('selected'));
+                            el.classList.add('selected');
+                            el.querySelector('input').checked = true;
+                        }
+                        </script>
                     </div>
                     
                     <button type="submit" 

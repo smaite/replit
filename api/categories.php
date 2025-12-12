@@ -1,80 +1,108 @@
 <?php
 /**
- * Categories API Endpoint
- * GET /api/categories - List all categories
- * GET /api/categories/:id - Get category details
+ * Sasto Hub Categories API
+ * Endpoints for category data
  */
-
-require_once '../config/database.php';
-require_once './config.php';
+require_once 'config.php';
 
 $method = $_SERVER['REQUEST_METHOD'];
-$path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$pathSegments = explode('/', trim($path, '/'));
 
-// Extract ID if present
-$categoryId = null;
-if (count($pathSegments) > 2 && is_numeric($pathSegments[2])) {
-    $categoryId = (int)$pathSegments[2];
+switch ($method) {
+    case 'GET':
+        handleGet();
+        break;
+    default:
+        jsonError('Method not allowed', 405);
 }
 
-try {
-    if ($method === 'GET') {
-        if ($categoryId) {
-            // Get single category with products
-            $stmt = $conn->prepare("
-                SELECT 
-                    id, 
-                    name,
-                    slug,
-                    image,
-                    description,
-                    created_at
-                FROM categories
-                WHERE id = ?
-                LIMIT 1
-            ");
-            $stmt->execute([$categoryId]);
-            $category = $stmt->fetch(PDO::FETCH_ASSOC);
-
-            if ($category) {
-                // Get product count
-                $countStmt = $conn->prepare("SELECT COUNT(*) as count FROM products WHERE category_id = ?");
-                $countStmt->execute([$categoryId]);
-                $category['product_count'] = (int)$countStmt->fetch(PDO::FETCH_ASSOC)['count'];
-
-                echo ApiResponse::success($category, 'Category fetched successfully');
-            } else {
-                echo ApiResponse::error('Category not found', 404);
-            }
-        } else {
-            // List all categories
-            $stmt = $conn->prepare("
-                SELECT 
-                    id, 
-                    name,
-                    slug,
-                    image,
-                    description,
-                    created_at
-                FROM categories
-                ORDER BY name ASC
-            ");
-            $stmt->execute();
-            $categories = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-            // Add product count to each category
-            foreach ($categories as &$category) {
-                $countStmt = $conn->prepare("SELECT COUNT(*) as count FROM products WHERE category_id = ?");
-                $countStmt->execute([$category['id']]);
-                $category['product_count'] = (int)$countStmt->fetch(PDO::FETCH_ASSOC)['count'];
-            }
-
-            echo ApiResponse::success($categories, 'Categories fetched successfully');
+function handleGet() {
+    global $conn;
+    
+    try {
+        // Single category by ID
+        if (isset($_GET['id'])) {
+            $categoryId = (int)$_GET['id'];
+            getCategoryById($categoryId);
+            return;
         }
-    } else {
-        echo ApiResponse::error('Method not allowed', 405);
+        
+        // Get all categories with subcategories
+        $stmt = $conn->query("
+            SELECT 
+                c.id,
+                c.name,
+                c.slug,
+                c.image,
+                c.parent_id,
+                c.status,
+                (SELECT COUNT(*) FROM products WHERE category_id = c.id AND status = 'active') as product_count
+            FROM categories c
+            WHERE c.status = 'active'
+            ORDER BY c.name ASC
+        ");
+        $allCategories = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        // Organize into parent-child structure
+        $parents = [];
+        $children = [];
+        
+        foreach ($allCategories as $cat) {
+            $cat['product_count'] = (int)$cat['product_count'];
+            $cat['image'] = $cat['image'] ? '/uploads/categories/' . $cat['image'] : null;
+            
+            if (empty($cat['parent_id'])) {
+                $cat['subcategories'] = [];
+                $parents[$cat['id']] = $cat;
+            } else {
+                $children[$cat['parent_id']][] = $cat;
+            }
+        }
+        
+        // Attach children to parents
+        foreach ($parents as $id => &$parent) {
+            if (isset($children[$id])) {
+                $parent['subcategories'] = $children[$id];
+            }
+        }
+        
+        jsonSuccess([
+            'categories' => array_values($parents)
+        ]);
+        
+    } catch (Exception $e) {
+        jsonError('Failed to fetch categories');
     }
-} catch (Exception $e) {
-    echo ApiResponse::error('Server error: ' . $e->getMessage(), 500);
+}
+
+function getCategoryById($id) {
+    global $conn;
+    
+    try {
+        $stmt = $conn->prepare("
+            SELECT 
+                c.*,
+                p.name as parent_name
+            FROM categories c
+            LEFT JOIN categories p ON c.parent_id = p.id
+            WHERE c.id = ? AND c.status = 'active'
+        ");
+        $stmt->execute([$id]);
+        $category = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$category) {
+            jsonError('Category not found', 404);
+        }
+        
+        $category['image'] = $category['image'] ? '/uploads/categories/' . $category['image'] : null;
+        
+        // Get subcategories
+        $subStmt = $conn->prepare("SELECT id, name, slug, image FROM categories WHERE parent_id = ? AND status = 'active'");
+        $subStmt->execute([$id]);
+        $category['subcategories'] = $subStmt->fetchAll(PDO::FETCH_ASSOC);
+        
+        jsonSuccess($category);
+        
+    } catch (Exception $e) {
+        jsonError('Failed to fetch category');
+    }
 }

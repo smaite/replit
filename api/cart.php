@@ -1,68 +1,197 @@
 <?php
-require_once '../config/config.php';
-require_once '../config/database.php';
+/**
+ * Sasto Hub Cart API
+ * Cart management endpoints
+ */
+require_once 'config.php';
 
-header('Content-Type: application/json');
+$method = $_SERVER['REQUEST_METHOD'];
 
-if (!isLoggedIn()) {
-    echo json_encode(['success' => false, 'message' => 'Please login first']);
-    exit;
+switch ($method) {
+    case 'GET':
+        handleGet();
+        break;
+    case 'POST':
+        handlePost();
+        break;
+    case 'PUT':
+        handleUpdate();
+        break;
+    case 'DELETE':
+        handleDelete();
+        break;
+    default:
+        jsonError('Method not allowed', 405);
 }
 
-$user_id = $_SESSION['user_id'];
-
-// Handle GET request for cart count
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'count') {
-    $stmt = $conn->prepare("SELECT SUM(quantity) as count FROM cart WHERE user_id = ?");
-    $stmt->execute([$user_id]);
-    $result = $stmt->fetch();
-    echo json_encode(['count' => $result['count'] ?? 0]);
-    exit;
-}
-
-// Handle POST request to add to cart
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $data = json_decode(file_get_contents('php://input'), true);
-    $action = $data['action'] ?? '';
+function handleGet() {
+    global $conn;
     
-    if ($action === 'add') {
-        $product_id = $data['product_id'] ?? 0;
-        $quantity = $data['quantity'] ?? 1;
+    $user = requireAuth();
+    
+    try {
+        $stmt = $conn->prepare("
+            SELECT 
+                c.id as cart_id,
+                c.quantity,
+                p.id as product_id,
+                p.name,
+                p.price,
+                p.sale_price,
+                p.stock,
+                (SELECT image_path FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1) as image
+            FROM cart c
+            JOIN products p ON c.product_id = p.id
+            WHERE c.user_id = ? AND p.status = 'active'
+        ");
+        $stmt->execute([$user['id']]);
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
         
-        if ($product_id > 0) {
-            // Check if product exists
-            $stmt = $conn->prepare("SELECT id FROM products WHERE id = ? AND status = 'active'");
-            $stmt->execute([$product_id]);
+        $subtotal = 0;
+        foreach ($items as &$item) {
+            $item['price'] = (float)$item['price'];
+            $item['sale_price'] = $item['sale_price'] ? (float)$item['sale_price'] : null;
+            $item['quantity'] = (int)$item['quantity'];
+            $item['stock'] = (int)$item['stock'];
+            $item['image'] = $item['image'] ?: '/uploads/products/placeholder.jpg';
             
-            if ($stmt->fetch()) {
-                // Check if already in cart
-                $stmt = $conn->prepare("SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ?");
-                $stmt->execute([$user_id, $product_id]);
-                $existing = $stmt->fetch();
-                
-                if ($existing) {
-                    // Update quantity
-                    $new_qty = $existing['quantity'] + $quantity;
-                    $stmt = $conn->prepare("UPDATE cart SET quantity = ? WHERE id = ?");
-                    $stmt->execute([$new_qty, $existing['id']]);
-                } else {
-                    // Insert new cart item
-                    $stmt = $conn->prepare("INSERT INTO cart (user_id, product_id, quantity) VALUES (?, ?, ?)");
-                    $stmt->execute([$user_id, $product_id, $quantity]);
-                }
-                
-                echo json_encode(['success' => true, 'message' => 'Product added to cart']);
-            } else {
-                echo json_encode(['success' => false, 'message' => 'Product not found']);
+            $itemPrice = $item['sale_price'] ?? $item['price'];
+            $item['item_total'] = $itemPrice * $item['quantity'];
+            $subtotal += $item['item_total'];
+        }
+        
+        jsonSuccess([
+            'items' => $items,
+            'subtotal' => $subtotal,
+            'item_count' => count($items)
+        ]);
+        
+    } catch (Exception $e) {
+        jsonError('Failed to fetch cart');
+    }
+}
+
+function handlePost() {
+    global $conn;
+    
+    $user = requireAuth();
+    $data = getJsonBody();
+    validateRequired($data, ['product_id']);
+    
+    $productId = (int)$data['product_id'];
+    $quantity = max(1, (int)($data['quantity'] ?? 1));
+    
+    try {
+        // Check if product exists and has stock
+        $stmt = $conn->prepare("SELECT id, stock FROM products WHERE id = ? AND status = 'active'");
+        $stmt->execute([$productId]);
+        $product = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$product) {
+            jsonError('Product not found', 404);
+        }
+        
+        if ($product['stock'] < $quantity) {
+            jsonError('Not enough stock available');
+        }
+        
+        // Check if already in cart
+        $cartStmt = $conn->prepare("SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ?");
+        $cartStmt->execute([$user['id'], $productId]);
+        $existing = $cartStmt->fetch(PDO::FETCH_ASSOC);
+        
+        if ($existing) {
+            // Update quantity
+            $newQty = $existing['quantity'] + $quantity;
+            if ($newQty > $product['stock']) {
+                $newQty = $product['stock'];
             }
+            $updateStmt = $conn->prepare("UPDATE cart SET quantity = ? WHERE id = ?");
+            $updateStmt->execute([$newQty, $existing['id']]);
         } else {
-            echo json_encode(['success' => false, 'message' => 'Invalid product']);
+            // Add new item
+            $insertStmt = $conn->prepare("INSERT INTO cart (user_id, product_id, quantity, created_at) VALUES (?, ?, ?, NOW())");
+            $insertStmt->execute([$user['id'], $productId, $quantity]);
+        }
+        
+        // Get updated cart count
+        $countStmt = $conn->prepare("SELECT COUNT(*) FROM cart WHERE user_id = ?");
+        $countStmt->execute([$user['id']]);
+        $cartCount = (int)$countStmt->fetchColumn();
+        
+        jsonSuccess(['cart_count' => $cartCount], 'Added to cart');
+        
+    } catch (Exception $e) {
+        jsonError('Failed to add to cart');
+    }
+}
+
+function handleUpdate() {
+    global $conn;
+    
+    $user = requireAuth();
+    $data = getJsonBody();
+    validateRequired($data, ['cart_id', 'quantity']);
+    
+    $cartId = (int)$data['cart_id'];
+    $quantity = max(1, (int)$data['quantity']);
+    
+    try {
+        // Verify ownership and get product stock
+        $stmt = $conn->prepare("
+            SELECT c.*, p.stock FROM cart c 
+            JOIN products p ON c.product_id = p.id 
+            WHERE c.id = ? AND c.user_id = ?
+        ");
+        $stmt->execute([$cartId, $user['id']]);
+        $cartItem = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        if (!$cartItem) {
+            jsonError('Cart item not found', 404);
+        }
+        
+        if ($quantity > $cartItem['stock']) {
+            jsonError('Not enough stock available');
+        }
+        
+        $updateStmt = $conn->prepare("UPDATE cart SET quantity = ? WHERE id = ?");
+        $updateStmt->execute([$quantity, $cartId]);
+        
+        jsonSuccess(null, 'Cart updated');
+        
+    } catch (Exception $e) {
+        jsonError('Failed to update cart');
+    }
+}
+
+function handleDelete() {
+    global $conn;
+    
+    $user = requireAuth();
+    
+    // Delete specific item or clear cart
+    if (isset($_GET['id'])) {
+        $cartId = (int)$_GET['id'];
+        
+        try {
+            $stmt = $conn->prepare("DELETE FROM cart WHERE id = ? AND user_id = ?");
+            $stmt->execute([$cartId, $user['id']]);
+            
+            jsonSuccess(null, 'Item removed from cart');
+            
+        } catch (Exception $e) {
+            jsonError('Failed to remove item');
         }
     } else {
-        echo json_encode(['success' => false, 'message' => 'Invalid action']);
+        // Clear entire cart
+        try {
+            $stmt = $conn->prepare("DELETE FROM cart WHERE user_id = ?");
+            $stmt->execute([$user['id']]);
+            
+            jsonSuccess(null, 'Cart cleared');
+            
+        } catch (Exception $e) {
+            jsonError('Failed to clear cart');
+        }
     }
-    exit;
 }
-
-echo json_encode(['success' => false, 'message' => 'Invalid request']);
-?>
