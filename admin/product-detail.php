@@ -28,7 +28,7 @@ if (!$product) {
 }
 
 // Fetch product images
-$stmt = $conn->prepare("SELECT * FROM product_images WHERE product_id = ? ORDER BY created_at");
+$stmt = $conn->prepare("SELECT * FROM product_images WHERE product_id = ? ORDER BY is_primary DESC, display_order ASC");
 $stmt->execute([$product_id]);
 $images = $stmt->fetchAll();
 
@@ -61,7 +61,7 @@ include '../includes/admin_header.php';
                     <div class="grid grid-cols-2 gap-4">
                         <?php foreach ($images as $image): ?>
                             <div class="aspect-square bg-gray-100 rounded-lg overflow-hidden">
-                                <img src="<?php echo htmlspecialchars($image['image_url']); ?>" alt="Product Image" class="w-full h-full object-cover">
+                                <img src="<?php echo htmlspecialchars($image['image_path'] ?? ''); ?>" alt="Product Image" class="w-full h-full object-cover">
                             </div>
                         <?php endforeach; ?>
                     </div>
