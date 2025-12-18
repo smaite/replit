@@ -48,7 +48,7 @@ try {
             // Get user's wishlist with product details
             $stmt = $conn->prepare("
                 SELECT w.id as wishlist_id, w.created_at as added_at,
-                       p.id, p.name, p.price, p.sale_price, p.image, p.stock,
+                       p.id, p.name, p.price, p.sale_price, COALESCE(p.thumbnail, p.image) as image, p.stock,
                        c.name as category_name
                 FROM wishlist w
                 JOIN products p ON w.product_id = p.id
