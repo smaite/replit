@@ -229,8 +229,8 @@ try {
             
             $stmt = $conn->prepare("
                 SELECT DISTINCT o.id, o.order_number, o.status, o.payment_method, o.payment_status,
-                       o.shipping_address, o.shipping_phone, o.created_at,
-                       u.full_name as customer_name, u.email as customer_email,
+                       o.created_at,
+                       u.full_name as customer_name,
                        SUM(oi.quantity * oi.price) as vendor_total,
                        COUNT(oi.id) as item_count
                 FROM orders o
@@ -244,6 +244,18 @@ try {
             ");
             $stmt->execute($params);
             $orders = $stmt->fetchAll();
+            
+            // Mask customer details for privacy - vendors shouldn't contact customers directly
+            foreach ($orders as &$order) {
+                $nameParts = explode(' ', $order['customer_name'] ?? '');
+                $firstName = $nameParts[0] ?? '';
+                $lastInitial = isset($nameParts[1]) ? strtoupper($nameParts[1][0]) . '.' : '';
+                $order['customer_name'] = $firstName . ' ' . $lastInitial;
+                // Don't expose email, phone, or full address to vendors
+                unset($order['customer_email']);
+                unset($order['shipping_phone']);
+                unset($order['shipping_address']);
+            }
             
             echo json_encode(['success' => true, 'data' => $orders]);
             break;
@@ -268,9 +280,24 @@ try {
                 exit;
             }
             
-            // Get vendor's items only
+            // Mask customer details for privacy
+            $nameParts = explode(' ', $order['customer_name'] ?? '');
+            $firstName = $nameParts[0] ?? '';
+            $lastInitial = isset($nameParts[1]) ? strtoupper($nameParts[1][0]) . '.' : '';
+            $order['customer_name'] = $firstName . ' ' . $lastInitial;
+            unset($order['customer_email']);
+            unset($order['customer_phone']);
+            // Only show city for shipping, not full address
+            if (!empty($order['shipping_address'])) {
+                $order['shipping_area'] = 'Delivery Area'; // Vendors just need to know there's a delivery
+            }
+            unset($order['shipping_address']);
+            unset($order['shipping_phone']);
+            
+            // Get vendor's items only (with image from product_images table)
             $stmt = $conn->prepare("
-                SELECT oi.*, p.name, p.image
+                SELECT oi.*, p.name, 
+                       (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = 1 LIMIT 1) as image
                 FROM order_items oi
                 JOIN products p ON oi.product_id = p.id
                 WHERE oi.order_id = ? AND p.vendor_id = ?
