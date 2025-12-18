@@ -91,8 +91,10 @@ try {
                     'id' => (int)$user['id'],
                     'email' => $user['email'],
                     'name' => $user['full_name'],
+                    'full_name' => $user['full_name'],
                     'phone' => $user['phone'] ?? '',
                     'address' => $user['address'] ?? '',
+                    'role' => $user['role'] ?? 'customer',
                 ],
                 'token' => $apiToken,
             ]
@@ -119,8 +121,10 @@ try {
                     'id' => (int)$userId,
                     'email' => $email,
                     'name' => $name,
+                    'full_name' => $name,
                     'phone' => '',
                     'address' => '',
+                    'role' => 'customer',
                 ],
                 'token' => $apiToken,
             ]

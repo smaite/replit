@@ -16,8 +16,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Verify API key
-verifyApiKey();
+// API key verification is handled by config.php
 
 $method = $_SERVER['REQUEST_METHOD'];
 
@@ -99,12 +98,13 @@ try {
             
         case 'POST':
             // Add a review (requires auth)
-            $user_id = getUserIdFromToken();
-            if (!$user_id) {
+            $user = getAuthUser();
+            if (!$user) {
                 http_response_code(401);
                 echo json_encode(['success' => false, 'error' => 'Authentication required']);
                 exit;
             }
+            $user_id = $user['id'];
             
             // Handle multipart form data for image uploads
             $product_id = (int)($_POST['product_id'] ?? 0);

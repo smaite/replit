@@ -16,16 +16,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Verify API key
-verifyApiKey();
+// API key verification is handled by config.php
 
-// Get user ID from auth header - must be a vendor
-$user_id = getUserIdFromToken();
-if (!$user_id) {
+// Get user from auth header - must be a vendor
+$user = getAuthUser();
+if (!$user) {
     http_response_code(401);
     echo json_encode(['success' => false, 'error' => 'Authentication required']);
     exit;
 }
+$user_id = $user['id'];
 
 // Check if user is a vendor
 $stmt = $conn->prepare("SELECT id FROM vendors WHERE user_id = ? AND status = 'approved'");
