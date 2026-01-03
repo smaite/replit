@@ -1,4 +1,5 @@
 <?php
+
 /**
  * Google Authentication API for Flutter App
  * Handles Google Sign-In token verification
@@ -66,24 +67,24 @@ try {
     } catch (Exception $e) {
         // Column might already exist, continue
     }
-    
+
     // Check if user already exists with this Google ID or email
     $stmt = $conn->prepare("SELECT * FROM users WHERE google_id = ? OR email = ?");
     $stmt->execute([$googleId, $email]);
     $user = $stmt->fetch(PDO::FETCH_ASSOC);
-    
+
     if ($user) {
         // Update existing user's Google ID if not set
         if (empty($user['google_id'])) {
             $updateStmt = $conn->prepare("UPDATE users SET google_id = ? WHERE id = ?");
             $updateStmt->execute([$googleId, $user['id']]);
         }
-        
+
         // Generate API token
         $apiToken = bin2hex(random_bytes(32));
         $updateToken = $conn->prepare("UPDATE users SET api_token = ?, last_login = NOW() WHERE id = ?");
         $updateToken->execute([$apiToken, $user['id']]);
-        
+
         echo json_encode([
             'success' => true,
             'data' => [
@@ -101,19 +102,19 @@ try {
         ]);
     } else {
         // Create new user from Google data
-        $stmt = $conn->prepare("INSERT INTO users (email, full_name, google_id, password, role, status, created_at) VALUES (?, ?, ?, ?, 'user', 'active', NOW())");
-        
+        $stmt = $conn->prepare("INSERT INTO users (email, full_name, google_id, password, role, created_at) VALUES (?, ?, ?, ?, 'customer', NOW())");
+
         // Generate a random password (user won't use it for Google login)
         $randomPassword = password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT);
-        
+
         $stmt->execute([$email, $name, $googleId, $randomPassword]);
         $userId = $conn->lastInsertId();
-        
+
         // Generate API token
         $apiToken = bin2hex(random_bytes(32));
         $updateToken = $conn->prepare("UPDATE users SET api_token = ?, last_login = NOW() WHERE id = ?");
         $updateToken->execute([$apiToken, $userId]);
-        
+
         echo json_encode([
             'success' => true,
             'data' => [

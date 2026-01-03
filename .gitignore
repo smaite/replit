@@ -1,5 +1,6 @@
 vendor/
 .local/
 /app
-/sasto_hub
 /uploads/products
+/pathlas
+/sasto_hub
