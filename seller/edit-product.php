@@ -183,7 +183,7 @@ if (isset($_GET['set_primary'])) {
 }
 
 $page_title = 'Edit Product - ' . htmlspecialchars($product['name'] ?? 'Product');
-include '../includes/vendor_header.php';
+include '../includes/seller_header.php';
 ?>
 
 <div class="container mx-auto px-4 py-8">

@@ -145,7 +145,7 @@ include '../includes/admin_header.php';
             <div class="bg-white rounded-lg shadow-sm p-6">
                 <h3 class="text-lg font-bold text-gray-900 mb-4">Actions</h3>
                 <div class="space-y-2">
-                    <a href="/vendor/edit-product.php?id=<?php echo $product['id']; ?>" class="block w-full px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition font-medium text-center">
+                    <a href="/seller/edit-product.php?id=<?php echo $product['id']; ?>" class="block w-full px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition font-medium text-center">
                         <i class="fas fa-edit"></i> Edit Product
                     </a>
                 </div>
