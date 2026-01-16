@@ -1,5 +1,7 @@
 # Enable Rewrite Engine
 RewriteEngine On
+RewriteCond %{HTTP:Authorization} ^(.*)
+RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
 
 # Force HTTPS (optional, uncomment if needed)
 # RewriteCond %{HTTPS} off

@@ -4,7 +4,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 // General Configuration
 define('SITE_NAME', 'SASTO Hub');
-define('SITE_URL', 'http://localhost/');
+define('SITE_URL', 'http://localhost');
 define('UPLOAD_DIR', __DIR__ . '/../uploads/');
 
 // Session Configuration
@@ -31,75 +31,89 @@ define('ROLE_VENDOR', 'vendor');
 define('ROLE_CUSTOMER', 'customer');
 
 // CSRF Protection
-function generateCsrfToken() {
+function generateCsrfToken()
+{
     if (!isset($_SESSION['csrf_token'])) {
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
     }
     return $_SESSION['csrf_token'];
 }
 
-function verifyCsrfToken($token) {
+function verifyCsrfToken($token)
+{
     return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
 }
 
-function csrfField() {
+function csrfField()
+{
     $token = generateCsrfToken();
     return '<input type="hidden" name="csrf_token" value="' . htmlspecialchars($token) . '">';
 }
 
 // Helper Functions
-function isLoggedIn() {
+function isLoggedIn()
+{
     return isset($_SESSION['user_id']) && isset($_SESSION['user_verified']);
 }
 
-function getUserRole() {
+function getUserRole()
+{
     return $_SESSION['user_role'] ?? null;
 }
 
-function isAdmin() {
+function isAdmin()
+{
     return isLoggedIn() && getUserRole() === ROLE_ADMIN;
 }
 
-function isVendor() {
+function isVendor()
+{
     return isLoggedIn() && getUserRole() === ROLE_VENDOR;
 }
 
-function requireAuth() {
+function requireAuth()
+{
     if (!isLoggedIn()) {
         redirect('/auth/login.php');
     }
 }
 
-function requireAdmin() {
+function requireAdmin()
+{
     requireAuth();
     if (!isAdmin()) {
         redirect('/');
     }
 }
 
-function requireVendor() {
+function requireVendor()
+{
     requireAuth();
     if (!isVendor()) {
         redirect('/');
     }
 }
 
-function redirect($url) {
+function redirect($url)
+{
     header("Location: $url");
     exit();
 }
 
-function formatPrice($price) {
+function formatPrice($price)
+{
     return 'Rs. ' . number_format($price, 2);
 }
 
-function sanitize($data) {
+function sanitize($data)
+{
     return htmlspecialchars(strip_tags(trim($data)));
 }
 
-function validateInput($data, $type = 'text', $maxLength = 255) {
+function validateInput($data, $type = 'text', $maxLength = 255)
+{
     $data = trim($data);
-    
+
     switch ($type) {
         case 'email':
             return filter_var($data, FILTER_VALIDATE_EMAIL) ? $data : false;
@@ -115,16 +129,17 @@ function validateInput($data, $type = 'text', $maxLength = 255) {
 }
 
 // Website Settings Management - Load from Database
-function getWebsiteSettings() {
+function getWebsiteSettings()
+{
     global $conn;
-    
+
     $settings = [];
     try {
         if (isset($conn) && $conn) {
             $stmt = $conn->prepare("SELECT setting_key, setting_value FROM settings ORDER BY setting_key");
             $stmt->execute();
             $db_settings = $stmt->fetchAll();
-            
+
             foreach ($db_settings as $setting) {
                 $settings[$setting['setting_key']] = $setting['setting_value'];
             }
@@ -132,16 +147,17 @@ function getWebsiteSettings() {
     } catch (Exception $e) {
         // Fallback to defaults if database fails
     }
-    
+
     // Merge with defaults if any keys missing
     if (empty($settings) || count($settings) < 10) {
         $settings = array_merge(getDefaultSettings(), $settings);
     }
-    
+
     return $settings;
 }
 
-function getDefaultSettings() {
+function getDefaultSettings()
+{
     return [
         'website_name' => 'SASTO Hub',
         'website_tagline' => 'Your Online Marketplace',
@@ -160,18 +176,20 @@ function getDefaultSettings() {
     ];
 }
 
-function getSetting($key, $default = null) {
+function getSetting($key, $default = null)
+{
     $settings = getWebsiteSettings();
     return $settings[$key] ?? $default;
 }
 
-function saveWebsiteSettings($settings) {
+function saveWebsiteSettings($settings)
+{
     global $conn;
-    
+
     try {
         if (isset($conn) && $conn) {
             $stmt = $conn->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
-            
+
             foreach ($settings as $key => $value) {
                 $stmt->execute([$key, $value, $value]);
             }
@@ -180,7 +198,6 @@ function saveWebsiteSettings($settings) {
     } catch (Exception $e) {
         return false;
     }
-    
+
     return false;
 }
-?>

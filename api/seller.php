@@ -128,66 +128,146 @@ try {
                     LIMIT $limit OFFSET $offset
                 ");
                 $stmt->execute([$vendor_id]);
-                $input = json_decode(file_get_contents('php://input'), true);
-                $product_id = (int)($input['product_id'] ?? 0);
+                $products = $stmt->fetchAll();
 
-                // Verify ownership
-                $stmt = $conn->prepare("SELECT id FROM products WHERE id = ? AND vendor_id = ?");
-                $stmt->execute([$product_id, $vendor_id]);
-                if (!$stmt->fetch()) {
-                    http_response_code(404);
-                    echo json_encode(['success' => false, 'error' => 'Product not found']);
+                echo json_encode(['success' => true, 'data' => $products]);
+            } elseif ($method === 'POST') {
+                // Handle Create/Update
+                $product_id = (int)($_POST['product_id'] ?? 0);
+
+                // Validation
+                if (empty($_POST['name']) || empty($_POST['price'])) {
+                    echo json_encode(['success' => false, 'error' => 'Name and Price are required']);
                     exit;
                 }
 
-                $updates = [];
-                $params = [];
+                $data = [
+                    'vendor_id' => $vendor_id,
+                    'name' => trim($_POST['name']),
+                    'description' => trim($_POST['description'] ?? ''),
+                    'price' => (float)$_POST['price'],
+                    'sale_price' => !empty($_POST['sale_price']) ? (float)$_POST['sale_price'] : null,
+                    'category_id' => (int)$_POST['category_id'],
+                    'brand_id' => !empty($_POST['brand_id']) ? (int)$_POST['brand_id'] : null,
+                    'stock' => (int)($_POST['stock'] ?? 0),
+                    'sku' => trim($_POST['sku'] ?? ''),
+                    'condition' => $_POST['condition'] ?? 'new',
+                    'flash_sale_eligible' => (int)($_POST['flash_sale_eligible'] ?? 0),
+                    'shipping_weight' => !empty($_POST['shipping_weight']) ? (float)$_POST['shipping_weight'] : null,
+                    'handling_days' => !empty($_POST['handling_days']) ? (int)$_POST['handling_days'] : null,
+                    'shipping_profile_id' => !empty($_POST['shipping_profile_id']) ? (int)$_POST['shipping_profile_id'] : null,
+                    'free_shipping' => (int)($_POST['free_shipping'] ?? 0),
+                    'return_policy_id' => !empty($_POST['return_policy_id']) ? (int)$_POST['return_policy_id'] : null,
+                    'video_url' => trim($_POST['video_url'] ?? ''),
+                    'is_featured' => (int)($_POST['is_featured'] ?? 0),
+                    'length' => !empty($_POST['length']) ? (float)$_POST['length'] : null,
+                    'width' => !empty($_POST['width']) ? (float)$_POST['width'] : null,
+                    'height' => !empty($_POST['height']) ? (float)$_POST['height'] : null,
+                    'status' => 'active'
+                ];
 
-                if (isset($input['name'])) {
-                    $updates[] = 'name = ?';
-                    $params[] = trim($input['name']);
-                }
-                if (isset($input['description'])) {
-                    $updates[] = 'description = ?';
-                    $params[] = trim($input['description']);
-                }
-                if (isset($input['price'])) {
-                    $updates[] = 'price = ?';
-                    $params[] = (float)$input['price'];
-                }
-                if (isset($input['sale_price'])) {
-                    $updates[] = 'sale_price = ?';
-                    $params[] = $input['sale_price'] > 0 ? (float)$input['sale_price'] : null;
-                }
-                if (isset($input['stock'])) {
-                    $updates[] = 'stock = ?';
-                    $params[] = (int)$input['stock'];
-                }
-                if (isset($input['category_id'])) {
-                    $updates[] = 'category_id = ?';
-                    $params[] = (int)$input['category_id'];
+                if ($product_id > 0) {
+                    // UPDATE
+                    // Verify ownership
+                    $stmt = $conn->prepare("SELECT id FROM products WHERE id = ? AND vendor_id = ?");
+                    $stmt->execute([$product_id, $vendor_id]);
+                    if (!$stmt->fetch()) {
+                        http_response_code(404);
+                        echo json_encode(['success' => false, 'error' => 'Product not found']);
+                        exit;
+                    }
+
+                    $fields = [];
+                    $values = [];
+                    foreach ($data as $key => $value) {
+                        $fields[] = "$key = ?";
+                        $values[] = $value;
+                    }
+                    $values[] = $product_id;
+
+                    $stmt = $conn->prepare("UPDATE products SET " . implode(', ', $fields) . ", updated_at = NOW() WHERE id = ?");
+                    $stmt->execute($values);
+                    $message = 'Product updated successfully';
+                } else {
+                    // INSERT
+                    $columns = implode(', ', array_keys($data));
+                    $placeholders = implode(', ', array_fill(0, count($data), '?'));
+                    $stmt = $conn->prepare("INSERT INTO products ($columns, created_at, updated_at) VALUES ($placeholders, NOW(), NOW())");
+                    $stmt->execute(array_values($data));
+                    $product_id = $conn->lastInsertId();
+                    $message = 'Product added successfully';
                 }
 
-                if (empty($updates)) {
-                    echo json_encode(['success' => true, 'message' => 'No changes']);
-                    exit;
+                // Handle Variants
+                if (!empty($_POST['variants'])) {
+                    $variants = json_decode($_POST['variants'], true);
+                    if (is_array($variants)) {
+                        $stmt = $conn->prepare("DELETE FROM product_variants WHERE product_id = ?");
+                        $stmt->execute([$product_id]);
+
+                        $stmt = $conn->prepare("INSERT INTO product_variants (product_id, color, size, price, stock, sku) VALUES (?, ?, ?, ?, ?, ?)");
+                        foreach ($variants as $v) {
+                            $stmt->execute([
+                                $product_id,
+                                $v['color'] ?? null,
+                                $v['size'] ?? null,
+                                $v['price'] ?? 0,
+                                $v['stock'] ?? 0,
+                                $v['sku'] ?? null
+                            ]);
+                        }
+                    }
                 }
 
-                $params[] = $product_id;
-                $stmt = $conn->prepare("UPDATE products SET " . implode(', ', $updates) . ", updated_at = NOW() WHERE id = ?");
-                $stmt->execute($params);
+                // Handle Images
+                if (!empty($_FILES['images']['name'][0])) {
+                    $uploadDir = '../uploads/products/';
+                    if (!file_exists($uploadDir)) mkdir($uploadDir, 0777, true);
 
-                echo json_encode(['success' => true, 'message' => 'Product updated']);
+                    $stmt = $conn->prepare("INSERT INTO product_images (product_id, image_path, is_primary) VALUES (?, ?, ?)");
+
+                    $check = $conn->prepare("SELECT COUNT(*) FROM product_images WHERE product_id = ? AND is_primary = 1");
+                    $check->execute([$product_id]);
+                    $hasPrimary = $check->fetchColumn() > 0;
+
+                    foreach ($_FILES['images']['name'] as $key => $name) {
+                        if ($_FILES['images']['error'][$key] === 0) {
+                            $ext = pathinfo($name, PATHINFO_EXTENSION);
+                            $filename = uniqid() . '.' . $ext;
+                            if (move_uploaded_file($_FILES['images']['tmp_name'][$key], $uploadDir . $filename)) {
+                                $isPrimary = !$hasPrimary && $key === 0 ? 1 : 0;
+                                $stmt->execute([$product_id, 'uploads/products/' . $filename, $isPrimary]);
+                            }
+                        }
+                    }
+                }
+
+                echo json_encode(['success' => true, 'message' => $message, 'product_id' => $product_id]);
             } elseif ($method === 'DELETE') {
                 // Delete product
                 $product_id = (int)($_GET['product_id'] ?? 0);
 
-                // Verify ownership and delete
-                $stmt = $conn->prepare("DELETE FROM products WHERE id = ? AND vendor_id = ?");
+                // Verify ownership
+                $stmt = $conn->prepare("SELECT id FROM products WHERE id = ? AND vendor_id = ?");
                 $stmt->execute([$product_id, $vendor_id]);
-
-                if ($stmt->rowCount() > 0) {
-                    echo json_encode(['success' => true, 'message' => 'Product deleted']);
+                
+                if ($stmt->fetch()) {
+                    try {
+                        // Try hard delete
+                        $stmt = $conn->prepare("DELETE FROM products WHERE id = ?");
+                        $stmt->execute([$product_id]);
+                        echo json_encode(['success' => true, 'message' => 'Product deleted']);
+                    } catch (PDOException $e) {
+                        // If foreign key constraint fails, soft delete
+                        if ($e->getCode() == '23000') {
+                            $stmt = $conn->prepare("UPDATE products SET status = 'inactive' WHERE id = ?");
+                            $stmt->execute([$product_id]);
+                            echo json_encode(['success' => true, 'message' => 'Product archived (has existing orders)']);
+                        } else {
+                            http_response_code(500);
+                            echo json_encode(['success' => false, 'error' => 'Delete failed: ' . $e->getMessage()]);
+                        }
+                    }
                 } else {
                     http_response_code(404);
                     echo json_encode(['success' => false, 'error' => 'Product not found']);

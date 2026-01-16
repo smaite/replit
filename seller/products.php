@@ -16,8 +16,30 @@ if (!$vendor) {
 
 // Handle delete action
 if (isset($_GET['delete']) && is_numeric($_GET['delete'])) {
-    $stmt = $conn->prepare("DELETE FROM products WHERE id = ? AND vendor_id = ?");
-    $stmt->execute([$_GET['delete'], $vendor['id']]);
+    $productId = $_GET['delete'];
+    $vendorId = $vendor['id'];
+
+    // Verify ownership
+    $stmt = $conn->prepare("SELECT id FROM products WHERE id = ? AND vendor_id = ?");
+    $stmt->execute([$productId, $vendorId]);
+    
+    if ($stmt->fetch()) {
+        try {
+            // Try hard delete
+            $stmt = $conn->prepare("DELETE FROM products WHERE id = ?");
+            $stmt->execute([$productId]);
+            $_SESSION['success'] = "Product deleted successfully.";
+        } catch (PDOException $e) {
+            // If foreign key constraint fails (e.g. has orders), soft delete
+            if ($e->getCode() == '23000') {
+                $stmt = $conn->prepare("UPDATE products SET status = 'inactive' WHERE id = ?");
+                $stmt->execute([$productId]);
+                $_SESSION['warning'] = "Product has existing orders and cannot be fully deleted. It has been marked as 'Inactive' instead.";
+            } else {
+                $_SESSION['error'] = "Error deleting product: " . $e->getMessage();
+            }
+        }
+    }
     redirect('/seller/products.php');
 }
 
@@ -47,6 +69,27 @@ include '../includes/header.php';
             <i class="fas fa-plus-circle"></i> Add Product
         </a>
     </div>
+    
+    <?php if (isset($_SESSION['success'])): ?>
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <span class="block sm:inline"><?php echo $_SESSION['success']; ?></span>
+            <?php unset($_SESSION['success']); ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['warning'])): ?>
+        <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <span class="block sm:inline"><?php echo $_SESSION['warning']; ?></span>
+            <?php unset($_SESSION['warning']); ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION['error'])): ?>
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+            <span class="block sm:inline"><?php echo $_SESSION['error']; ?></span>
+            <?php unset($_SESSION['error']); ?>
+        </div>
+    <?php endif; ?>
     
     <div class="bg-white rounded-lg shadow overflow-hidden">
         <?php if (empty($products)): ?>
