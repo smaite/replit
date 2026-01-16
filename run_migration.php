@@ -8,7 +8,7 @@ try {
     }
     $db = $conn;
 
-    $sql = file_get_contents('migrations/migration_vendor_status.sql');
+    $sql = file_get_contents('migrations/migration_cancel_reason.sql');
 
     // Split SQL by semicolon to execute statements individually (PDO doesn't support multiple statements in one go usually)
     // However, for simple migrations, we might need to be careful.

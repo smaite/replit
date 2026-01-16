@@ -21,6 +21,27 @@ if (!$order) {
     redirect('/pages/order-history.php');
 }
 
+// Handle cancellation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_order'])) {
+    if ($order['status'] === 'pending') {
+        $stmt = $conn->prepare("UPDATE orders SET status = 'cancelled' WHERE id = ?");
+        $stmt->execute([$order_id]);
+        
+        // Update all items status
+        $stmt = $conn->prepare("UPDATE order_items SET vendor_status = 'cancelled' WHERE order_id = ?");
+        $stmt->execute([$order_id]);
+        
+        // Refresh order
+        $stmt = $conn->prepare("SELECT * FROM orders WHERE id = ? AND user_id = ?");
+        $stmt->execute([$order_id, $_SESSION['user_id']]);
+        $order = $stmt->fetch();
+        
+        $success = "Order cancelled successfully.";
+    } else {
+        $error = "Order cannot be cancelled at this stage.";
+    }
+}
+
 // Fetch order items
 $stmt = $conn->prepare("
     SELECT oi.*, p.name, p.slug, pi.image_path, v.shop_name
@@ -58,6 +79,18 @@ include '../includes/header.php';
         </a>
         <h1 class="text-4xl font-bold text-gray-900">Order Details</h1>
     </div>
+
+    <?php if (isset($success)): ?>
+        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6">
+            <?php echo $success; ?>
+        </div>
+    <?php endif; ?>
+
+    <?php if (isset($error)): ?>
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6">
+            <?php echo $error; ?>
+        </div>
+    <?php endif; ?>
 
     <!-- Order Status Timeline -->
     <?php if ($order['status'] !== 'cancelled'): ?>
@@ -266,10 +299,13 @@ include '../includes/header.php';
                         <i class="fas fa-download"></i> Download Invoice
                     </button>
                     
-                    <?php if ($order['status'] !== 'delivered' && $order['status'] !== 'cancelled'): ?>
-                        <a href="/pages/order-history.php" class="block w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition text-center">
-                            <i class="fas fa-times"></i> Cancel Order
-                        </a>
+                    <?php if ($order['status'] === 'pending'): ?>
+                        <form method="POST" onsubmit="return confirm('Are you sure you want to cancel this order?');">
+                            <input type="hidden" name="cancel_order" value="1">
+                            <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition text-center">
+                                <i class="fas fa-times"></i> Cancel Order
+                            </button>
+                        </form>
                     <?php endif; ?>
                 </div>
             </div>

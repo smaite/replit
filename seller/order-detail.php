@@ -39,7 +39,9 @@ try {
     
     // Get vendor's items in this order
     $stmt = $conn->prepare("
-        SELECT oi.*, p.name, p.image, oi.vendor_status
+        SELECT oi.*, p.name, 
+               (SELECT image_path FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1) as image,
+               oi.vendor_status, oi.cancel_reason
         FROM order_items oi
         JOIN products p ON oi.product_id = p.id
         WHERE oi.order_id = ? AND p.vendor_id = ?
@@ -64,37 +66,42 @@ try {
     $order_items = [];
 }
 
-// Handle status update
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
+// Handle cancellation
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel_order'])) {
     if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
         $error = 'Security token invalid. Please try again.';
     } else {
-        try {
-            $new_status = sanitize($_POST['vendor_status']);
-            
-            // Update vendor status for all vendor's items in this order
-            $stmt = $conn->prepare("
-                UPDATE order_items oi
-                JOIN products p ON oi.product_id = p.id
-                SET oi.vendor_status = ?
-                WHERE oi.order_id = ? AND p.vendor_id = ?
-            ");
-            $stmt->execute([$new_status, $order_id, $vendor_id]);
-            
-            $success = 'Order status updated successfully!';
-            
-            // Reload items
-            $stmt = $conn->prepare("
-                SELECT oi.*, p.name, p.image, oi.vendor_status
-                FROM order_items oi
-                JOIN products p ON oi.product_id = p.id
-                WHERE oi.order_id = ? AND p.vendor_id = ?
-            ");
-            $stmt->execute([$order_id, $vendor_id]);
-            $order_items = $stmt->fetchAll();
-            
-        } catch (Exception $e) {
-            $error = 'Failed to update status: ' . $e->getMessage();
+        $reason = sanitize($_POST['cancel_reason']);
+        if (empty($reason)) {
+            $error = 'Please provide a reason for cancellation.';
+        } else {
+            try {
+                // Update vendor status to cancelled and save reason
+                $stmt = $conn->prepare("
+                    UPDATE order_items oi
+                    JOIN products p ON oi.product_id = p.id
+                    SET oi.vendor_status = 'cancelled', oi.cancel_reason = ?
+                    WHERE oi.order_id = ? AND p.vendor_id = ?
+                ");
+                $stmt->execute([$reason, $order_id, $vendor_id]);
+                
+                $success = 'Order cancelled successfully.';
+                
+                // Reload items
+                $stmt = $conn->prepare("
+                    SELECT oi.*, p.name, 
+                           (SELECT image_path FROM product_images WHERE product_id = p.id AND is_primary = 1 LIMIT 1) as image,
+                           oi.vendor_status, oi.cancel_reason
+                    FROM order_items oi
+                    JOIN products p ON oi.product_id = p.id
+                    WHERE oi.order_id = ? AND p.vendor_id = ?
+                ");
+                $stmt->execute([$order_id, $vendor_id]);
+                $order_items = $stmt->fetchAll();
+                
+            } catch (Exception $e) {
+                $error = 'Failed to cancel order: ' . $e->getMessage();
+            }
         }
     }
 }
@@ -155,23 +162,34 @@ include '../includes/seller_header.php';
                         </span>
                     </div>
                     
-                    <!-- Update Your Status -->
-                    <form method="POST" class="flex items-center gap-4 p-4 bg-gray-50 rounded-lg">
-                        <input type="hidden" name="csrf_token" value="<?php echo generateCsrfToken(); ?>">
-                        <input type="hidden" name="update_status" value="1">
-                        
-                        <label class="font-medium text-gray-700">Your Status:</label>
-                        <select name="vendor_status" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
-                            <?php $current_status = $order_items[0]['vendor_status'] ?? 'pending'; ?>
-                            <option value="pending" <?php echo $current_status === 'pending' ? 'selected' : ''; ?>>Pending</option>
-                            <option value="processing" <?php echo $current_status === 'processing' ? 'selected' : ''; ?>>Processing</option>
-                            <option value="ready" <?php echo $current_status === 'ready' ? 'selected' : ''; ?>>Ready to Ship</option>
-                            <option value="shipped" <?php echo $current_status === 'shipped' ? 'selected' : ''; ?>>Shipped</option>
-                        </select>
-                        <button type="submit" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-indigo-700">
-                            Update
-                        </button>
-                    </form>
+                    <!-- Cancel Order Section -->
+                    <?php if ($order_items[0]['vendor_status'] !== 'cancelled'): ?>
+                        <div class="mt-6 border-t pt-6">
+                            <h3 class="text-lg font-bold text-red-600 mb-4">Cancel Order</h3>
+                            <form method="POST" onsubmit="return confirm('Are you sure you want to cancel this order? This action cannot be undone.');">
+                                <input type="hidden" name="csrf_token" value="<?php echo generateCsrfToken(); ?>">
+                                <input type="hidden" name="cancel_order" value="1">
+                                
+                                <div class="mb-4">
+                                    <label class="block text-gray-700 font-medium mb-2">Cancellation Reason</label>
+                                    <textarea name="cancel_reason" rows="3" required
+                                              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-red-500"
+                                              placeholder="Please explain why you are cancelling this order..."></textarea>
+                                </div>
+                                
+                                <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg font-medium">
+                                    Cancel Order
+                                </button>
+                            </form>
+                        </div>
+                    <?php else: ?>
+                        <div class="mt-6 border-t pt-6">
+                            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                                <p class="font-bold">Order Cancelled</p>
+                                <p class="text-sm mt-1">Reason: <?php echo htmlspecialchars($order_items[0]['cancel_reason'] ?? 'No reason provided'); ?></p>
+                            </div>
+                        </div>
+                    <?php endif; ?>
                 </div>
                 
                 <!-- Order Items -->
