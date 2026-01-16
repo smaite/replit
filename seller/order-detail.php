@@ -148,7 +148,7 @@ include '../includes/seller_header.php';
                             <i class="fas fa-clipboard-check text-primary"></i> Order Status
                         </h2>
                         <?php
-                        $status = $order['status'];
+                        $status = $order_items[0]['vendor_status'] ?? 'pending';
                         $status_classes = [
                             'pending' => 'bg-yellow-100 text-yellow-700',
                             'processing' => 'bg-blue-100 text-blue-700',

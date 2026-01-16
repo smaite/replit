@@ -66,7 +66,7 @@ $where = "p.vendor_id = ?";
 $params = [$vendor_id];
 
 if ($status_filter) {
-    $where .= " AND o.status = ?";
+    $where .= " AND oi.vendor_status = ?";
     $params[] = $status_filter;
 }
 
@@ -122,12 +122,12 @@ try {
 $status_counts = [];
 try {
     $stmt = $conn->prepare("
-        SELECT o.status, COUNT(DISTINCT o.id) as count
+        SELECT oi.vendor_status as status, COUNT(DISTINCT o.id) as count
         FROM orders o
         JOIN order_items oi ON o.id = oi.order_id
         JOIN products p ON oi.product_id = p.id
         WHERE p.vendor_id = ?
-        GROUP BY o.status
+        GROUP BY oi.vendor_status
     ");
     $stmt->execute([$vendor_id]);
     $counts = $stmt->fetchAll();
@@ -240,7 +240,7 @@ include '../includes/seller_header.php';
                                 </td>
                                 <td class="px-6 py-4">
                                     <?php
-                                    $status = $order['status'];
+                                    $status = $order['vendor_status'];
                                     $status_classes = [
                                         'pending' => 'bg-yellow-100 text-yellow-700',
                                         'processing' => 'bg-blue-100 text-blue-700',
