@@ -24,7 +24,7 @@ if (!$order_id) {
 // Fetch order with vendor's items only
 try {
     $stmt = $conn->prepare("
-        SELECT o.*, u.name as customer_name, u.email as customer_email, u.phone as customer_phone
+        SELECT o.*, u.full_name as customer_name, u.email as customer_email, u.phone as customer_phone
         FROM orders o
         JOIN users u ON o.user_id = u.id
         WHERE o.id = ?

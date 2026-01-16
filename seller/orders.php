@@ -71,7 +71,7 @@ if ($status_filter) {
 }
 
 if ($search) {
-    $where .= " AND (o.order_number LIKE ? OR u.name LIKE ? OR u.email LIKE ?)";
+    $where .= " AND (o.order_number LIKE ? OR u.full_name LIKE ? OR u.email LIKE ?)";
     $params[] = "%$search%";
     $params[] = "%$search%";
     $params[] = "%$search%";
@@ -81,7 +81,7 @@ if ($search) {
 try {
     $stmt = $conn->prepare("
         SELECT DISTINCT o.*, 
-               u.name as customer_name, 
+               u.full_name as customer_name, 
                u.email as customer_email,
                SUM(oi.quantity * oi.price) as vendor_total,
                COUNT(DISTINCT oi.id) as item_count,
