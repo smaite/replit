@@ -216,8 +216,7 @@ try {
                     $insertData = array_merge($commonData, [
                         'vendor_id' => $vendor_id,
                         'slug' => $slug,
-                        'status' => 'active',
-                        'verification_status' => 'pending'
+                        'status' => 'active'
                     ]);
                     
                     $columns = [];
