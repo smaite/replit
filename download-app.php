@@ -6,12 +6,18 @@ $page_title = 'Download Sasto Hub App - SASTO Hub';
 include 'includes/header.php';
 ?>
 
-<div class="container mx-auto px-4 py-12">
+<div class="container mx-auto px-4 py-8 md:py-12">
     <div class="max-w-4xl mx-auto">
         <!-- Header Section -->
-        <div class="text-center mb-12">
-            <h1 class="text-4xl font-bold text-gray-800 mb-4">Download Sasto Hub App</h1>
-            <p class="text-xl text-gray-600">Shop smarter with our mobile app - Available for Android</p>
+        <div class="text-center mb-8 md:mb-12">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-4">Download Sasto Hub App</h1>
+            <p class="text-lg md:text-xl text-gray-600 mb-6">Shop smarter with our mobile app - Available for Android</p>
+            
+            <!-- Mobile Download Button -->
+            <a href="https://github.com/smaite/replit/releases/download/1.0.0/app-release.apk" download class="md:hidden inline-flex items-center justify-center bg-gradient-to-r from-orange-500 to-orange-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform transition hover:scale-105 animate-bounce">
+                <i class="fas fa-download mr-2"></i>
+                Download APK
+            </a>
         </div>
 
         <!-- App Preview & Download Card -->
