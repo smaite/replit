@@ -88,24 +88,7 @@ include '../includes/header.php';
                 <h3 class="font-bold text-lg mb-4">Filters</h3>
                 
                 <!-- Categories -->
-                <div class="mb-6">
-                    <h4 class="font-medium text-gray-900 mb-3">Categories</h4>
-                    <ul class="space-y-2">
-                        <li>
-                            <a href="/pages/products.php" class="text-gray-700 hover:text-primary <?php echo !$category_slug ? 'font-bold text-primary' : ''; ?>">
-                                All Categories
-                            </a>
-                        </li>
-                        <?php foreach ($categories as $cat): ?>
-                            <li>
-                                <a href="/pages/products.php?slug=<?php echo $cat['slug']; ?>" 
-                                   class="text-gray-700 hover:text-primary <?php echo $category_slug === $cat['slug'] ? 'font-bold text-primary' : ''; ?>">
-                                    <?php echo htmlspecialchars($cat['name']); ?>
-                                </a>
-                            </li>
-                        <?php endforeach; ?>
-                    </ul>
-                </div>
+                <!-- Categories Removed as per request -->
                 
                 <!-- Sort -->
                 <div>

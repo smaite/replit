@@ -17,6 +17,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $stmt = $conn->prepare("UPDATE products SET verification_status = 'rejected' WHERE id = ?");
         $stmt->execute([$product_id]);
         $_SESSION['flash_success'] = "Product rejected!";
+    } elseif ($action === 'toggle_status') {
+        $new_status = $_POST['new_status'];
+        $stmt = $conn->prepare("UPDATE products SET status = ? WHERE id = ?");
+        $stmt->execute([$new_status, $product_id]);
+        $_SESSION['flash_success'] = "Product status updated to " . ucfirst($new_status);
     }
     
     header('Location: ' . $_SERVER['REQUEST_URI']);
@@ -238,6 +243,14 @@ include '../includes/admin_header.php';
                                     <span class="inline-block px-3 py-1 text-xs rounded-full <?php echo $statusClass; ?>">
                                         <?php echo $statusIcon . ' ' . ucfirst($status); ?>
                                     </span>
+                                    <div class="mt-1">
+                                        <?php 
+                                            $isActive = ($product['status'] ?? 'inactive') === 'active';
+                                            echo $isActive 
+                                                ? '<span class="text-xs text-green-600 font-medium">● Active</span>' 
+                                                : '<span class="text-xs text-gray-500">○ Inactive</span>';
+                                        ?>
+                                    </div>
                                 </td>
                                 <td class="px-6 py-4 text-sm text-gray-600">
                                     <?php echo date('M d, Y', strtotime($product['created_at'])); ?>
@@ -259,11 +272,18 @@ include '../includes/admin_header.php';
                                                     ✗ Reject
                                                 </button>
                                             </form>
-                                        <?php else: ?>
-                                            <a href="/admin/product-detail.php?id=<?php echo $product['id']; ?>" class="text-primary hover:text-indigo-700 text-sm font-medium" title="View Details">
-                                                <i class="fas fa-eye"></i> View
-                                            </a>
                                         <?php endif; ?>
+                                        <form method="POST" class="inline ml-2" onsubmit="return confirm('Change status?');">
+                                            <input type="hidden" name="product_id" value="<?php echo $product['id']; ?>">
+                                            <input type="hidden" name="action" value="toggle_status">
+                                            <input type="hidden" name="new_status" value="<?php echo ($product['status'] ?? 'inactive') === 'active' ? 'inactive' : 'active'; ?>">
+                                            <button type="submit" class="text-xs font-medium px-2 py-1 rounded border <?php echo ($product['status'] ?? 'inactive') === 'active' ? 'border-red-300 text-red-600 hover:bg-red-50' : 'border-green-300 text-green-600 hover:bg-green-50'; ?>">
+                                                <?php echo ($product['status'] ?? 'inactive') === 'active' ? 'Deactivate' : 'Activate'; ?>
+                                            </button>
+                                        </form>
+                                        <a href="/admin/product-detail.php?id=<?php echo $product['id']; ?>" class="text-primary hover:text-indigo-700 text-sm font-medium ml-2" title="View Details">
+                                            <i class="fas fa-eye"></i> View
+                                        </a>
                                     </div>
                                 </td>
                             </tr>

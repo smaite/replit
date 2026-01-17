@@ -45,7 +45,11 @@ try {
                 'enabled' => ($settings['payment_qr_enabled'] ?? '0') === '1',
                 'label' => 'QR Payment',
                 'description' => 'Scan and pay',
-                'qr_image' => $settings['payment_qr_image'] ?? '',
+                'qr_image' => !empty($settings['payment_qr_image']) 
+                    ? (str_starts_with($settings['payment_qr_image'], 'http') 
+                        ? $settings['payment_qr_image'] 
+                        : 'http://' . $_SERVER['HTTP_HOST'] . '/' . ltrim($settings['payment_qr_image'], '/'))
+                    : '',
                 'instructions' => $settings['payment_qr_instructions'] ?? ''
             ]
         ],

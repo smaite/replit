@@ -21,7 +21,16 @@ function addToCart(productId, quantity = 1) {
             quantity: parseInt(quantity)
         })
     })
-    .then(response => response.json())
+    .then(response => {
+        if (response.status === 401) {
+            showNotification('Please login to add items to cart', 'error');
+            setTimeout(() => {
+                window.location.href = '/auth/login.php';
+            }, 1500);
+            throw new Error('Unauthorized');
+        }
+        return response.json();
+    })
     .then(data => {
         if (data.success) {
             // Update cart count

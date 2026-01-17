@@ -36,8 +36,8 @@
             theme: {
                 extend: {
                     colors: {
-                        primary: '#4F46E5',
-                        secondary: '#EC4899',
+                        primary: '#2196F3', // App Blue
+                        secondary: '#F5841F', // App Orange
                     }
                 }
             }
@@ -112,7 +112,7 @@
             }
             
             .nav-item:hover, .nav-item.active {
-                color: #4F46E5;
+                color: #2196F3;
                 background: #f3f4f6;
             }
             
@@ -144,64 +144,68 @@
         }
     </style>
 </head>
+<?php $contact_phone = getSetting('contact_phone');?>
 <body class="bg-gray-50">
-    <header class="bg-white shadow-md sticky top-0 z-50">
-        <div class="top-bar bg-primary text-white py-2">
-            <div class="container mx-auto px-4 flex justify-between items-center text-sm">
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <!-- Top Bar (Clean White/Gray Style) -->
+        <div class="top-bar bg-gray-50 border-b border-gray-200 text-gray-600 py-2">
+            <div class="container mx-auto px-4 flex justify-between items-center text-xs font-medium">
                 <div class="flex items-center gap-4">
-                    <span><i class="fas fa-phone"></i> +977-14000000</span>
-                    <span><i class="fas fa-envelope"></i> info@sastohub.com</span>
+                            
+                    <a href="tel:<?php echo htmlspecialchars($contact_phone); ?>" class="hover:text-primary transition"><i class="fas fa-phone mr-1"></i><?php $contact_phone = getSetting('contact_phone'); echo htmlspecialchars($contact_phone); ?></a>
+                    <span class="hover:text-primary transition"><i class="fas fa-envelope mr-1"></i> info@sastohub.com</span>
                 </div>
                 <div class="flex items-center gap-4">
                     <?php if (isLoggedIn()): ?>
-                        <span>Welcome, <?php echo htmlspecialchars(explode(' ', $_SESSION['user_name'])[0]); ?>!</span>
+                        <span class="text-gray-800">Welcome, <?php echo htmlspecialchars(explode(' ', $_SESSION['user_name'])[0]); ?>!</span>
                         <?php if (isAdmin()): ?>
-                            <a href="/admin/" class="hover:text-gray-200"><i class="fas fa-cog"></i> Admin Panel</a>
+                            <a href="/admin/" class="hover:text-primary transition"><i class="fas fa-cog"></i> Admin Panel</a>
                         <?php elseif (isVendor()): ?>
-                            <a href="/seller/" class="hover:text-gray-200"><i class="fas fa-store"></i> Seller Dashboard</a>
+                            <a href="/seller/" class="hover:text-primary transition"><i class="fas fa-store"></i> Seller Dashboard</a>
                         <?php else: ?>
-                            <a href="/pages/dashboard.php" class="hover:text-gray-200"><i class="fas fa-user-circle"></i> Dashboard</a>
+                            <a href="/pages/dashboard.php" class="hover:text-primary transition"><i class="fas fa-user-circle"></i> Dashboard</a>
                         <?php endif; ?>
-                        <a href="/auth/logout.php" class="hover:text-gray-200"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                        <a href="/auth/logout.php" class="hover:text-red-500 transition"><i class="fas fa-sign-out-alt"></i> Logout</a>
                     <?php else: ?>
-                        <a href="/auth/login.php" class="hover:text-gray-200"><i class="fas fa-sign-in-alt"></i> Login</a>
-                        <a href="/auth/register.php" class="hover:text-gray-200"><i class="fas fa-user-plus"></i> Register</a>
+                        <a href="/auth/login.php" class="hover:text-primary transition"><i class="fas fa-sign-in-alt"></i> Login</a>
+                        <a href="/auth/register.php" class="hover:text-primary transition"><i class="fas fa-user-plus"></i> Register</a>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
         
-        <nav class="main-nav container mx-auto px-4 py-3">
-            <div class="flex justify-between items-center">
-                <a href="/" class="logo text-2xl md:text-3xl font-bold text-primary whitespace-nowrap">
+        <nav class="main-nav container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center gap-8">
+                <a href="/" class="logo text-2xl md:text-3xl font-bold text-primary whitespace-nowrap flex items-center gap-2">
                     <i class="fas fa-shopping-bag"></i> SASTO HUB
                 </a>
                 
-                <div class="search-bar flex-1 mx-4 md:mx-8 max-w-2xl hidden md:block">
-                    <form action="/pages/search.php" method="GET" class="relative">
-                        <input type="text" name="q" placeholder="Search products..." 
-                               class="w-full px-4 py-3 pr-12 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-primary">
-                        <button type="submit" class="absolute right-2 top-1/2 -translate-y-1/2 bg-primary text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
-                            <i class="fas fa-search"></i>
+                <!-- Search Bar (App Style: Grey Box) -->
+                <div class="search-bar flex-1 max-w-2xl hidden md:block">
+                    <form action="/pages/search.php" method="GET" class="relative group">
+                        <input type="text" name="q" placeholder="Search in Sasto Hub..." 
+                               class="w-full px-5 py-3 pr-12 bg-gray-100 border border-transparent rounded-lg focus:outline-none focus:bg-white focus:border-primary transition-all text-sm placeholder-gray-500">
+                        <button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition">
+                            <i class="fas fa-search text-lg"></i>
                         </button>
                     </form>
                 </div>
                 
-                <div class="header-icons flex items-center gap-4 md:gap-6">
-                    <a href="/pages/cart.php" class="relative text-gray-700 hover:text-primary text-xl" title="Cart">
+                <div class="header-icons flex items-center gap-6">
+                    <a href="/pages/cart.php" class="relative text-gray-600 hover:text-primary transition text-xl" title="Cart">
                         <i class="fas fa-shopping-cart"></i>
                         <?php if (isset($_SESSION['cart_count']) && $_SESSION['cart_count'] > 0): ?>
-                            <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                            <span class="absolute -top-2 -right-2 bg-secondary text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-sm">
                                 <?php echo $_SESSION['cart_count']; ?>
                             </span>
                         <?php endif; ?>
                     </a>
                     <?php if (isLoggedIn()): ?>
-                        <a href="/pages/dashboard.php" class="text-gray-700 hover:text-primary text-xl hidden sm:block" title="Dashboard">
+                        <a href="/pages/dashboard.php" class="text-gray-600 hover:text-primary transition text-xl hidden sm:block" title="Dashboard">
                             <i class="fas fa-user-circle"></i>
                         </a>
                     <?php else: ?>
-                        <a href="/auth/login.php" class="text-gray-700 hover:text-primary text-xl hidden sm:block" title="Login">
+                        <a href="/auth/login.php" class="text-gray-600 hover:text-primary transition text-xl hidden sm:block" title="Login">
                             <i class="fas fa-user"></i>
                         </a>
                     <?php endif; ?>
@@ -212,8 +216,8 @@
         <div class="md:hidden px-4 pb-3">
             <form action="/pages/search.php" method="GET" class="relative">
                 <input type="text" name="q" placeholder="Search..." 
-                       class="w-full px-4 py-2 pr-10 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-primary text-sm">
-                <button type="submit" class="absolute right-2 top-1/2 -translate-y-1/2 text-primary">
+                       class="w-full px-4 py-2 pr-10 bg-gray-100 border border-transparent rounded-lg focus:outline-none focus:bg-white focus:border-primary text-sm">
+                <button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
                     <i class="fas fa-search"></i>
                 </button>
             </form>

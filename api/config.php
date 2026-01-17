@@ -50,6 +50,11 @@ require_once dirname(__DIR__) . '/config/database.php';
  * @return bool
  */
 function validateApiKey() {
+    // Allow if user is logged in via session (for website frontend)
+    if (isset($_SESSION['user_id'])) {
+        return true;
+    }
+
     $headers = getallheaders();
     $apiKey = $headers[API_KEY_HEADER] ?? $headers[strtolower(API_KEY_HEADER)] ?? null;
     
@@ -170,6 +175,20 @@ function getAuthUser() {
         }
     } else {
         error_log("No Bearer token found in header");
+        
+        // Fallback to session auth
+        if (isset($_SESSION['user_id'])) {
+            try {
+                $stmt = $conn->prepare("SELECT * FROM users WHERE id = ?");
+                $stmt->execute([$_SESSION['user_id']]);
+                $user = $stmt->fetch(PDO::FETCH_ASSOC);
+                if ($user) {
+                    return $user;
+                }
+            } catch (Exception $e) {
+                error_log("Session auth error: " . $e->getMessage());
+            }
+        }
     }
     
     return null;
