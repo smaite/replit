@@ -82,7 +82,7 @@ include 'includes/header.php';
                     </div>
 
                     <!-- Download Button -->
-                    <a href="/uploads/sasto-hub.apk" download class="block w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-4 px-8 rounded-xl text-center text-lg shadow-lg transform transition hover:scale-105 mb-4">
+                    <a href="https://github.com/smaite/replit/releases/download/1.0.0/app-release.apk" download class="block w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-bold py-4 px-8 rounded-xl text-center text-lg shadow-lg transform transition hover:scale-105 mb-4">
                         <i class="fas fa-download mr-2"></i>
                         Download APK
                     </a>
