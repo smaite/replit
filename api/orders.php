@@ -39,6 +39,7 @@ function handleGet() {
                 shipping_cost,
                 payment_method,
                 payment_status,
+                payment_reference,
                 status,
                 created_at
             FROM orders 
@@ -147,8 +148,8 @@ function handlePost() {
         // Create order
         $orderStmt = $conn->prepare("
             INSERT INTO orders (user_id, order_number, total_amount, shipping_cost, payment_method, 
-                               shipping_address, shipping_phone, notes, payment_status, status, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'pending', NOW())
+                               shipping_address, shipping_phone, notes, payment_status, payment_reference, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, 'pending', NOW())
         ");
         $orderStmt->execute([
             $user['id'],
@@ -158,7 +159,8 @@ function handlePost() {
             $data['payment_method'],
             $data['shipping_address'],
             $data['shipping_phone'],
-            $data['notes'] ?? null
+            $data['notes'] ?? null,
+            $data['reference_number'] ?? null
         ]);
         $orderId = $conn->lastInsertId();
         

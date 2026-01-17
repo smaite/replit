@@ -133,6 +133,7 @@ include '../includes/admin_header.php';
                             <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Order #</th>
                             <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Customer</th>
                             <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Amount</th>
+                            <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Payment</th>
                             <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Status</th>
                             <th class="px-6 py-4 text-left text-sm font-semibold text-gray-700">Date</th>
                             <th class="px-6 py-4 text-right text-sm font-semibold text-gray-700">Actions</th>
