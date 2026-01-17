@@ -141,9 +141,14 @@ try {
                     exit;
                 }
 
+                // Generate slug
+                $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', trim($_POST['name'])), '-'));
+                $slug = $slug . '-' . time(); // Ensure uniqueness
+
                 $data = [
                     'vendor_id' => $vendor_id,
                     'name' => trim($_POST['name']),
+                    'slug' => $slug,
                     'description' => trim($_POST['description'] ?? ''),
                     'price' => (float)$_POST['price'],
                     'sale_price' => !empty($_POST['sale_price']) ? (float)$_POST['sale_price'] : null,
@@ -151,6 +156,7 @@ try {
                     'brand_id' => !empty($_POST['brand_id']) ? (int)$_POST['brand_id'] : null,
                     'stock' => (int)($_POST['stock'] ?? 0),
                     'sku' => trim($_POST['sku'] ?? ''),
+                    'tags' => trim($_POST['tags'] ?? ''),
                     'condition' => $_POST['condition'] ?? 'new',
                     'flash_sale_eligible' => (int)($_POST['flash_sale_eligible'] ?? 0),
                     'shipping_weight' => !empty($_POST['shipping_weight']) ? (float)$_POST['shipping_weight'] : null,
@@ -159,11 +165,13 @@ try {
                     'free_shipping' => (int)($_POST['free_shipping'] ?? 0),
                     'return_policy_id' => !empty($_POST['return_policy_id']) ? (int)$_POST['return_policy_id'] : null,
                     'video_url' => trim($_POST['video_url'] ?? ''),
-                    'is_featured' => (int)($_POST['is_featured'] ?? 0),
-                    'length' => !empty($_POST['length']) ? (float)$_POST['length'] : null,
-                    'width' => !empty($_POST['width']) ? (float)$_POST['width'] : null,
-                    'height' => !empty($_POST['height']) ? (float)$_POST['height'] : null,
-                    'status' => 'active'
+                    'featured' => (int)($_POST['is_featured'] ?? 0),
+                    'dimensions_length' => !empty($_POST['length']) ? (float)$_POST['length'] : null,
+                    'dimensions_width' => !empty($_POST['width']) ? (float)$_POST['width'] : null,
+                    'dimensions_height' => !empty($_POST['height']) ? (float)$_POST['height'] : null,
+                    'bullet_points' => !empty($_POST['bullet_points']) ? $_POST['bullet_points'] : null,
+                    'status' => 'active',
+                    'verification_status' => 'pending'
                 ];
 
                 if ($product_id > 0) {

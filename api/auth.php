@@ -21,6 +21,9 @@ switch ($method) {
             case 'logout':
                 handleLogout();
                 break;
+            case 'become-vendor':
+                handleBecomeVendor();
+                break;
             default:
                 jsonError('Invalid action');
         }
@@ -227,5 +230,133 @@ function handleUpdateProfile()
         jsonSuccess(['user' => $updatedUser], 'Profile updated successfully');
     } catch (Exception $e) {
         jsonError('Failed to update profile: ' . $e->getMessage());
+    }
+}
+
+function handleBecomeVendor()
+{
+    global $conn;
+    
+    $user = requireAuth();
+    
+    // Check if user is already a vendor
+    $checkStmt = $conn->prepare("SELECT id, status FROM vendors WHERE user_id = ?");
+    $checkStmt->execute([$user['id']]);
+    $existingVendor = $checkStmt->fetch(PDO::FETCH_ASSOC);
+    
+    if ($existingVendor) {
+        if ($existingVendor['status'] === 'approved') {
+            jsonError('You are already a registered vendor');
+        } elseif ($existingVendor['status'] === 'pending') {
+            jsonError('Your vendor application is already pending review');
+        }
+    }
+    
+    // Get form data (multipart/form-data)
+    $shopName = trim($_POST['shop_name'] ?? '');
+    $shopDescription = trim($_POST['shop_description'] ?? '');
+    $businessWebsite = trim($_POST['business_website'] ?? '');
+    $businessLocation = trim($_POST['business_location'] ?? '');
+    $businessCity = trim($_POST['business_city'] ?? '');
+    $businessState = trim($_POST['business_state'] ?? '');
+    $businessPostalCode = trim($_POST['business_postal_code'] ?? '');
+    $businessPhone = trim($_POST['business_phone'] ?? '');
+    $bankAccountName = trim($_POST['bank_account_name'] ?? '');
+    $bankAccountNumber = trim($_POST['bank_account_number'] ?? '');
+    
+    // Validate required fields
+    if (empty($shopName) || empty($shopDescription) || empty($businessLocation) ||
+        empty($businessCity) || empty($businessPhone) || empty($bankAccountName) ||
+        empty($bankAccountNumber)) {
+        jsonError('Please fill in all required fields');
+    }
+    
+    // Validate document uploads
+    $requiredDocs = ['national_id_front', 'national_id_back', 'pan_vat_document', 'business_registration'];
+    foreach ($requiredDocs as $doc) {
+        if (!isset($_FILES[$doc]) || $_FILES[$doc]['error'] !== UPLOAD_ERR_OK) {
+            jsonError("Please upload all required documents ($doc is missing)");
+        }
+    }
+    
+    try {
+        // Create upload directory
+        $uploadDir = '../uploads/vendor-documents/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+        
+        $uploadedFiles = [];
+        $allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
+        $maxSize = 5 * 1024 * 1024; // 5MB
+        
+        // Process file uploads
+        foreach ($requiredDocs as $doc) {
+            $file = $_FILES[$doc];
+            
+            // Validate file type
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mimeType = finfo_file($finfo, $file['tmp_name']);
+            finfo_close($finfo);
+            
+            if (!in_array($mimeType, $allowedTypes)) {
+                jsonError("$doc: Only JPEG, PNG, and PDF files are allowed");
+            }
+            
+            // Validate file size
+            if ($file['size'] > $maxSize) {
+                jsonError("$doc: File size must not exceed 5MB");
+            }
+            
+            // Generate unique filename
+            $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+            $filename = time() . '_' . $user['id'] . '_' . $doc . '.' . $ext;
+            $filepath = $uploadDir . $filename;
+            
+            // Move uploaded file
+            if (move_uploaded_file($file['tmp_name'], $filepath)) {
+                $uploadedFiles[$doc] = $filepath;
+            } else {
+                // Clean up previously uploaded files
+                foreach ($uploadedFiles as $uploaded) {
+                    if (file_exists($uploaded)) unlink($uploaded);
+                }
+                jsonError("Failed to upload $doc");
+            }
+        }
+        
+        // Insert vendor record
+        $stmt = $conn->prepare("
+            INSERT INTO vendors (user_id, shop_name, shop_description, business_website,
+                                 business_location, business_city, business_state,
+                                 business_postal_code, business_phone,
+                                 bank_account_name, bank_account_number, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW())
+        ");
+        $stmt->execute([
+            $user['id'], $shopName, $shopDescription, $businessWebsite,
+            $businessLocation, $businessCity, $businessState,
+            $businessPostalCode, $businessPhone,
+            $bankAccountName, $bankAccountNumber
+        ]);
+        $vendorId = $conn->lastInsertId();
+        
+        // Store document file paths
+        $docStmt = $conn->prepare("INSERT INTO vendor_documents (vendor_id, document_type, document_url, created_at) VALUES (?, ?, ?, NOW())");
+        foreach ($uploadedFiles as $docType => $filePath) {
+            $docStmt->execute([$vendorId, $docType, $filePath]);
+        }
+        
+        jsonSuccess([
+            'vendor_id' => $vendorId,
+            'status' => 'pending'
+        ], 'Vendor application submitted successfully! We will review it within 3-5 business days.');
+        
+    } catch (Exception $e) {
+        // Clean up uploaded files on error
+        foreach ($uploadedFiles ?? [] as $file) {
+            if (file_exists($file)) unlink($file);
+        }
+        jsonError('Failed to submit application: ' . $e->getMessage());
     }
 }
