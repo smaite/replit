@@ -27,7 +27,7 @@ function handleGet() {
         }
         
         // Build query based on filters
-        $where = ["p.status = 'active'", "(p.verification_status = 'approved' OR p.verification_status IS NULL OR p.verification_status = '')"];
+        $where = ["p.status = 'active'"];
         $params = [];
         
         // Filter by category
