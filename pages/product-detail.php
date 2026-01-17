@@ -82,10 +82,6 @@ include '../includes/header.php';
             <h1 class="text-3xl font-bold text-gray-900 mb-2"><?php echo htmlspecialchars($product['name']); ?></h1>
             
             <div class="flex items-center gap-4 mb-4">
-                <div class="text-sm text-gray-600">
-                    <i class="fas fa-store text-primary"></i> 
-                    <strong><?php echo htmlspecialchars($product['shop_name']); ?></strong>
-                </div>
                 <?php if ($product['sku']): ?>
                     <div class="text-sm text-gray-600">
                         SKU: <?php echo htmlspecialchars($product['sku']); ?>
@@ -153,11 +149,6 @@ include '../includes/header.php';
                     Out of Stock
                 </button>
             <?php endif; ?>
-            
-            <div class="mt-8 border-t pt-6">
-                <h4 class="font-bold text-gray-900 mb-3">About this vendor</h4>
-                <p class="text-gray-700 text-sm"><?php echo nl2br(htmlspecialchars($product['shop_description'] ?? 'No description available')); ?></p>
-            </div>
         </div>
     </div>
     

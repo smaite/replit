@@ -91,9 +91,7 @@ include '../includes/header.php';
                     </div>
 
                     <div class="p-4">
-                        <p class="text-xs text-gray-500 mb-1">
-                            <i class="fas fa-store"></i> <?php echo htmlspecialchars($item['shop_name'] ?? 'Unknown'); ?>
-                        </p>
+
                         <a href="/pages/product-detail.php?slug=<?php echo htmlspecialchars($item['slug']); ?>">
                             <h3 class="font-bold text-gray-900 hover:text-primary line-clamp-2">
                                 <?php echo htmlspecialchars($item['name']); ?>

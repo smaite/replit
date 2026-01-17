@@ -181,9 +181,7 @@ include '../includes/header.php';
                                        class="text-lg font-bold text-gray-900 hover:text-primary">
                                         <?php echo htmlspecialchars($item['name']); ?>
                                     </a>
-                                    <p class="text-sm text-gray-600 mt-1">
-                                        <i class="fas fa-store"></i> <?php echo htmlspecialchars($item['shop_name'] ?? 'Unknown'); ?>
-                                    </p>
+
                                     <div class="flex gap-8 mt-3 text-sm">
                                         <div>
                                             <span class="text-gray-600">Unit Price:</span>

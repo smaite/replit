@@ -74,9 +74,7 @@ include '../includes/header.php';
                                class="font-bold text-gray-900 hover:text-primary">
                                 <?php echo htmlspecialchars($item['name']); ?>
                             </a>
-                            <p class="text-sm text-gray-600 mt-1">
-                                <i class="fas fa-store"></i> <?php echo htmlspecialchars($item['shop_name']); ?>
-                            </p>
+
                             <p class="text-lg font-bold text-primary mt-2">
                                 <?php echo formatPrice($item_price); ?>
                             </p>

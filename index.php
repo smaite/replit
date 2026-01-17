@@ -234,7 +234,7 @@ require_once 'includes/header.php';
                         </div>
                     </a>
                     <div class="p-3">
-                        <p class="text-xs text-gray-500 mb-1"><i class="fas fa-store"></i> <?php echo htmlspecialchars(substr($product['shop_name'] ?? 'Shop', 0, 12)); ?></p>
+
                         <a href="/pages/product-detail.php?slug=<?php echo htmlspecialchars($product['slug']); ?>">
                             <h3 class="font-bold text-gray-900 hover:text-primary line-clamp-2 text-sm">
                                 <?php echo htmlspecialchars($product['name']); ?>
@@ -289,7 +289,7 @@ require_once 'includes/header.php';
                     </div>
                 </a>
                 <div class="p-3">
-                    <p class="text-xs text-gray-500 mb-1"><i class="fas fa-store"></i> <?php echo htmlspecialchars(substr($product['shop_name'] ?? 'Shop', 0, 12)); ?></p>
+
                     <a href="/pages/product-detail.php?slug=<?php echo htmlspecialchars($product['slug']); ?>">
                         <h3 class="font-bold text-gray-900 hover:text-primary line-clamp-2 text-sm">
                             <?php echo htmlspecialchars($product['name']); ?>
