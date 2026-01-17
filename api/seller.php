@@ -198,7 +198,7 @@ try {
                     $fields = [];
                     $values = [];
                     foreach ($data as $key => $value) {
-                        $fields[] = "$key = ?";
+                        $fields[] = "`$key` = ?";
                         $values[] = $value;
                     }
                     $values[] = $product_id;
@@ -208,7 +208,7 @@ try {
                     $message = 'Product updated successfully';
                 } else {
                     // INSERT
-                    $columns = implode(', ', array_keys($data));
+                    $columns = implode(', ', array_map(fn($k) => "`$k`", array_keys($data)));
                     $placeholders = implode(', ', array_fill(0, count($data), '?'));
                     $stmt = $conn->prepare("INSERT INTO products ($columns, created_at, updated_at) VALUES ($placeholders, NOW(), NOW())");
                     $stmt->execute(array_values($data));
