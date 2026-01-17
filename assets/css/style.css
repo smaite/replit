@@ -4,6 +4,7 @@
 .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
@@ -116,18 +117,7 @@ img.loaded {
         gap: 8px;
     }
     
-    /* Stack elements better on small screens */
-    .grid-cols-2 {
-        grid-template-columns: 1fr !important;
-    }
-    
-    .grid-cols-3 {
-        grid-template-columns: repeat(2, 1fr) !important;
-    }
-    
-    .grid-cols-4 {
-        grid-template-columns: repeat(2, 1fr) !important;
-    }
+
 }
 
 /* Print Styles */

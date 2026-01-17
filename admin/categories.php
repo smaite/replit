@@ -48,6 +48,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif (isset($_POST['edit_category'])) {
         $category_id = (int)$_POST['category_id'];
         $name = trim($_POST['name']);
+        $parentId = !empty($_POST['parent_id']) ? (int)$_POST['parent_id'] : null;
+        
+        // Prevent setting self as parent
+        if ($parentId === $category_id) {
+            $parentId = null;
+        }
+
         $imagePath = null;
         
         // Handle image upload for edit
@@ -64,11 +71,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         
         if ($name) {
             if ($imagePath) {
-                $stmt = $conn->prepare("UPDATE categories SET name = ?, image = ? WHERE id = ?");
-                $stmt->execute([$name, $imagePath, $category_id]);
+                $stmt = $conn->prepare("UPDATE categories SET name = ?, parent_id = ?, image = ? WHERE id = ?");
+                $stmt->execute([$name, $parentId, $imagePath, $category_id]);
             } else {
-                $stmt = $conn->prepare("UPDATE categories SET name = ? WHERE id = ?");
-                $stmt->execute([$name, $category_id]);
+                $stmt = $conn->prepare("UPDATE categories SET name = ?, parent_id = ? WHERE id = ?");
+                $stmt->execute([$name, $parentId, $category_id]);
             }
             $message = '<div class="bg-green-100 text-green-700 p-4 rounded mb-6">Category updated successfully</div>';
         }
@@ -230,7 +237,7 @@ include '../includes/admin_header.php';
                                     
                                     <!-- Actions -->
                                     <div class="flex gap-2">
-                                        <button onclick="event.stopPropagation(); editCategory(<?php echo $parent['id']; ?>, '<?php echo htmlspecialchars($parent['name']); ?>')" 
+                                        <button onclick="event.stopPropagation(); editCategory(<?php echo $parent['id']; ?>, '<?php echo htmlspecialchars($parent['name']); ?>', '')" 
                                                 class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg" title="Edit">
                                             <i class="fas fa-edit"></i>
                                         </button>
@@ -284,7 +291,7 @@ include '../includes/admin_header.php';
                                                 
                                                 <!-- Actions -->
                                                 <div class="flex gap-1">
-                                                    <button onclick="editCategory(<?php echo $child['id']; ?>, '<?php echo htmlspecialchars($child['name']); ?>')" 
+                                                    <button onclick="editCategory(<?php echo $child['id']; ?>, '<?php echo htmlspecialchars($child['name']); ?>', <?php echo $parentId; ?>)" 
                                                             class="p-1 text-blue-600 hover:bg-blue-50 rounded text-sm" title="Edit">
                                                         <i class="fas fa-edit"></i>
                                                     </button>
@@ -332,7 +339,7 @@ include '../includes/admin_header.php';
 <div id="editModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-white rounded-lg shadow-lg p-6 max-w-sm w-full mx-4">
         <h3 class="text-xl font-bold text-gray-900 mb-4">Edit Category</h3>
-        <form method="POST" class="space-y-4">
+        <form method="POST" enctype="multipart/form-data" class="space-y-4">
             <input type="hidden" name="csrf_token" value="<?php echo generateCsrfToken(); ?>">
             <input type="hidden" name="edit_category" value="1">
             <input type="hidden" id="categoryId" name="category_id">
@@ -342,6 +349,24 @@ include '../includes/admin_header.php';
                 <input type="text" id="categoryName" name="name" required
                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
                        minlength="3" maxlength="100">
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Parent Category</label>
+                <select id="categoryParent" name="parent_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
+                    <option value="">— None (Top Level) —</option>
+                    <?php foreach ($parentCategories as $pc): ?>
+                        <option value="<?php echo $pc['id']; ?>" id="edit-parent-<?php echo $pc['id']; ?>"><?php echo htmlspecialchars($pc['name']); ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="text-xs text-gray-500 mt-1">Select to make this a subcategory</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">Update Image (Optional)</label>
+                <input type="file" name="edit_image" accept="image/jpeg,image/png,image/webp"
+                       class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
+                <p class="text-xs text-gray-500 mt-1">Leave empty to keep current image</p>
             </div>
             
             <div class="flex gap-3">
@@ -357,9 +382,23 @@ include '../includes/admin_header.php';
 </div>
 
 <script>
-function editCategory(id, name) {
+function editCategory(id, name, parentId = '') {
     document.getElementById('categoryId').value = id;
     document.getElementById('categoryName').value = name;
+    document.getElementById('categoryParent').value = parentId;
+    
+    // Enable all options first
+    const options = document.getElementById('categoryParent').options;
+    for (let i = 0; i < options.length; i++) {
+        options[i].disabled = false;
+    }
+    
+    // Disable self-selection if it exists in dropdown
+    const selfOption = document.getElementById('edit-parent-' + id);
+    if (selfOption) {
+        selfOption.disabled = true;
+    }
+    
     document.getElementById('editModal').classList.remove('hidden');
 }
 

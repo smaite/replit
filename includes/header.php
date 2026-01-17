@@ -264,4 +264,89 @@
         <?php endif; ?>
     </nav>
     
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInputs = document.querySelectorAll('input[name="q"]');
+            
+            searchInputs.forEach(input => {
+                // Create suggestions container
+                const container = document.createElement('div');
+                container.id = 'search-suggestions-' + Math.random().toString(36).substr(2, 9);
+                container.className = 'absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-b-lg shadow-lg z-50 hidden max-h-96 overflow-y-auto';
+                input.parentNode.appendChild(container);
+                
+                let timeout = null;
+                
+                input.addEventListener('input', function() {
+                    const query = this.value.trim();
+                    const currentContainer = this.parentNode.querySelector('div[id^="search-suggestions-"]');
+                    
+                    clearTimeout(timeout);
+                    
+                    if (query.length < 2) {
+                        currentContainer.classList.add('hidden');
+                        currentContainer.innerHTML = '';
+                        return;
+                    }
+                    
+                    timeout = setTimeout(() => {
+                        fetch(`/api/search_suggestions.php?q=${encodeURIComponent(query)}`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if ((data.categories && data.categories.length > 0) || (data.products && data.products.length > 0)) {
+                                    let html = '';
+                                    
+                                    // Categories
+                                    if (data.categories.length > 0) {
+                                        html += '<div class="bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-500 uppercase">Categories</div>';
+                                        data.categories.forEach(cat => {
+                                            const imageHtml = cat.image 
+                                                ? `<img src="${cat.image}" class="w-8 h-8 object-cover rounded-full mr-3 border border-gray-200">`
+                                                : `<div class="w-8 h-8 bg-gray-100 rounded-full mr-3 flex items-center justify-center text-gray-400 border border-gray-200"><i class="fas fa-th text-xs"></i></div>`;
+                                                
+                                            html += `
+                                                <a href="/pages/products.php?slug=${cat.slug}" class="flex items-center px-4 py-2 hover:bg-gray-100 text-gray-800 border-b last:border-0">
+                                                    ${imageHtml}
+                                                    <span class="font-medium">${cat.name}</span>
+                                                </a>
+                                            `;
+                                        });
+                                    }
+                                    
+                                    // Products
+                                    if (data.products.length > 0) {
+                                        html += '<div class="bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-500 uppercase">Products</div>';
+                                        data.products.forEach(prod => {
+                                            const price = new Intl.NumberFormat('en-NP', { style: 'currency', currency: 'NPR' }).format(prod.sale_price || prod.price);
+                                            html += `
+                                                <a href="/pages/product-detail.php?slug=${prod.slug}" class="flex items-center px-4 py-2 hover:bg-gray-100 border-b last:border-0">
+                                                    <img src="${prod.image_path || 'https://via.placeholder.com/40'}" class="w-10 h-10 object-cover rounded mr-3">
+                                                    <div>
+                                                        <div class="text-sm font-medium text-gray-900">${prod.name}</div>
+                                                        <div class="text-xs text-primary font-bold">${price}</div>
+                                                    </div>
+                                                </a>
+                                            `;
+                                        });
+                                    }
+                                    
+                                    currentContainer.innerHTML = html;
+                                    currentContainer.classList.remove('hidden');
+                                } else {
+                                    currentContainer.classList.add('hidden');
+                                }
+                            })
+                            .catch(err => console.error('Search error:', err));
+                    }, 300);
+                });
+                
+                // Hide on click outside
+                document.addEventListener('click', function(e) {
+                    if (!input.contains(e.target) && !container.contains(e.target)) {
+                        container.classList.add('hidden');
+                    }
+                });
+            });
+        });
+    </script>
     <main class="min-h-screen">
