@@ -63,7 +63,7 @@ include 'includes/header.php';
                             </div>
                             <div>
                                 <p class="text-orange-100">Size</p>
-                                <p class="font-semibold">~25 MB</p>
+                                <p class="font-semibold">~53 MB</p>
                             </div>
                             <div>
                                 <p class="text-orange-100">Updated</p>
