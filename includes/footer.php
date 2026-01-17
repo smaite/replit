@@ -45,6 +45,7 @@
                         <li><a href="/pages/products.php?featured=1" class="hover:text-white">Featured Products</a></li>
                         <li><a href="/pages/products.php?sale=1" class="hover:text-white">Flash Sale</a></li>
                         <li><a href="/auth/become-vendor.php" class="hover:text-white">Become a Vendor</a></li>
+                        <li><a href="/download-app.php" class="hover:text-white text-orange-400 font-semibold"><i class="fab fa-android mr-1"></i> Download App</a></li>
                     </ul>
                 </div>
                 
