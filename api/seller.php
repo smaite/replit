@@ -155,10 +155,9 @@ try {
                 $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', trim($inputData['name'])), '-'));
                 $slug = $slug . '-' . time(); // Ensure uniqueness
 
-                $data = [
-                    'vendor_id' => $vendor_id,
+                // Common fields for both insert and update
+                $commonData = [
                     'name' => trim($inputData['name']),
-                    'slug' => $slug,
                     'description' => trim($inputData['description'] ?? ''),
                     'price' => (float)$inputData['price'],
                     'sale_price' => !empty($inputData['sale_price']) ? (float)$inputData['sale_price'] : null,
@@ -167,22 +166,23 @@ try {
                     'stock' => (int)($inputData['stock'] ?? 0),
                     'sku' => trim($inputData['sku'] ?? ''),
                     'tags' => trim($inputData['tags'] ?? ''),
-                    'condition' => $inputData['condition'] ?? 'new',
-                    'flash_sale_eligible' => (int)($inputData['flash_sale_eligible'] ?? 0),
-                    'shipping_weight' => !empty($inputData['shipping_weight']) ? (float)$inputData['shipping_weight'] : null,
-                    'handling_days' => !empty($inputData['handling_days']) ? (int)$inputData['handling_days'] : null,
-                    'shipping_profile_id' => !empty($inputData['shipping_profile_id']) ? (int)$inputData['shipping_profile_id'] : null,
                     'free_shipping' => (int)($inputData['free_shipping'] ?? 0),
-                    'return_policy_id' => !empty($inputData['return_policy_id']) ? (int)$inputData['return_policy_id'] : null,
                     'video_url' => trim($inputData['video_url'] ?? ''),
-                    'featured' => (int)($inputData['is_featured'] ?? 0),
-                    'dimensions_length' => !empty($inputData['length']) ? (float)$inputData['length'] : null,
-                    'dimensions_width' => !empty($inputData['width']) ? (float)$inputData['width'] : null,
-                    'dimensions_height' => !empty($inputData['height']) ? (float)$inputData['height'] : null,
-                    'bullet_points' => !empty($inputData['bullet_points']) ? $inputData['bullet_points'] : null,
-                    'status' => 'active',
-                    'verification_status' => 'pending'
                 ];
+
+                // Optional fields - only include if columns exist
+                if (isset($inputData['condition'])) {
+                    $commonData['`condition`'] = $inputData['condition'];
+                }
+                if (isset($inputData['flash_sale_eligible'])) {
+                    $commonData['flash_sale_eligible'] = (int)$inputData['flash_sale_eligible'];
+                }
+                if (!empty($inputData['shipping_weight'])) {
+                    $commonData['shipping_weight'] = (float)$inputData['shipping_weight'];
+                }
+                if (!empty($inputData['handling_days'])) {
+                    $commonData['handling_days'] = (int)$inputData['handling_days'];
+                }
 
                 if ($product_id > 0) {
                     // UPDATE
