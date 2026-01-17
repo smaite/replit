@@ -197,8 +197,13 @@ try {
 
                     $fields = [];
                     $values = [];
-                    foreach ($data as $key => $value) {
-                        $fields[] = "`$key` = ?";
+                    foreach ($commonData as $key => $value) {
+                        // Key might already have backticks for reserved words like `condition`
+                        if (strpos($key, '`') === false) {
+                            $fields[] = "`$key` = ?";
+                        } else {
+                            $fields[] = "$key = ?";
+                        }
                         $values[] = $value;
                     }
                     $values[] = $product_id;
@@ -207,11 +212,26 @@ try {
                     $stmt->execute($values);
                     $message = 'Product updated successfully';
                 } else {
-                    // INSERT
-                    $columns = implode(', ', array_map(fn($k) => "`$k`", array_keys($data)));
-                    $placeholders = implode(', ', array_fill(0, count($data), '?'));
-                    $stmt = $conn->prepare("INSERT INTO products ($columns, created_at, updated_at) VALUES ($placeholders, NOW(), NOW())");
-                    $stmt->execute(array_values($data));
+                    // INSERT - add extra fields for new products
+                    $insertData = array_merge($commonData, [
+                        'vendor_id' => $vendor_id,
+                        'slug' => $slug,
+                        'status' => 'active',
+                        'verification_status' => 'pending'
+                    ]);
+                    
+                    $columns = [];
+                    foreach (array_keys($insertData) as $k) {
+                        if (strpos($k, '`') === false) {
+                            $columns[] = "`$k`";
+                        } else {
+                            $columns[] = $k;
+                        }
+                    }
+                    $columnsStr = implode(', ', $columns);
+                    $placeholders = implode(', ', array_fill(0, count($insertData), '?'));
+                    $stmt = $conn->prepare("INSERT INTO products ($columnsStr, created_at, updated_at) VALUES ($placeholders, NOW(), NOW())");
+                    $stmt->execute(array_values($insertData));
                     $product_id = $conn->lastInsertId();
                     $message = 'Product added successfully';
                 }
