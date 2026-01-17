@@ -92,15 +92,13 @@ function handlePost() {
         }
         
         // Check if user is the vendor of this product (prevent self-purchase)
-        if ($product['vendor_id'] == $user['id']) {
-            jsonError('You cannot purchase your own product');
-        }
-        
-        // Also check if user has a vendor record that matches
-        $vendorCheck = $conn->prepare("SELECT id FROM vendors WHERE user_id = ? AND id = ?");
-        $vendorCheck->execute([$user['id'], $product['vendor_id']]);
-        if ($vendorCheck->fetch()) {
-            jsonError('You cannot purchase your own product');
+        // Only check if the product has a vendor_id
+        if ($product['vendor_id']) {
+            $vendorCheck = $conn->prepare("SELECT id FROM vendors WHERE user_id = ? AND id = ?");
+            $vendorCheck->execute([$user['id'], $product['vendor_id']]);
+            if ($vendorCheck->fetch()) {
+                jsonError('You cannot purchase your own product');
+            }
         }
         
         if ($product['stock'] < $quantity) {

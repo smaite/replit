@@ -120,7 +120,8 @@ try {
                 $offset = ($page - 1) * $limit;
 
                 $stmt = $conn->prepare("
-                    SELECT p.*, c.name as category_name
+                    SELECT p.*, c.name as category_name,
+                           (SELECT pi.image_path FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = 1 LIMIT 1) as image
                     FROM products p
                     LEFT JOIN categories c ON p.category_id = c.id
                     WHERE p.vendor_id = ?
@@ -131,45 +132,54 @@ try {
                 $products = $stmt->fetchAll();
 
                 echo json_encode(['success' => true, 'data' => $products]);
-            } elseif ($method === 'POST') {
+            } elseif ($method === 'POST' || $method === 'PUT') {
                 // Handle Create/Update
-                $product_id = (int)($_POST['product_id'] ?? 0);
+                // For PUT requests, parse JSON body
+                $inputData = $_POST;
+                if ($method === 'PUT') {
+                    $jsonInput = json_decode(file_get_contents('php://input'), true);
+                    if ($jsonInput) {
+                        $inputData = array_merge($inputData, $jsonInput);
+                    }
+                }
+                
+                $product_id = (int)($inputData['product_id'] ?? 0);
 
                 // Validation
-                if (empty($_POST['name']) || empty($_POST['price'])) {
+                if (empty($inputData['name']) || empty($inputData['price'])) {
                     echo json_encode(['success' => false, 'error' => 'Name and Price are required']);
                     exit;
                 }
 
                 // Generate slug
-                $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', trim($_POST['name'])), '-'));
+                $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9-]+/', '-', trim($inputData['name'])), '-'));
                 $slug = $slug . '-' . time(); // Ensure uniqueness
 
                 $data = [
                     'vendor_id' => $vendor_id,
-                    'name' => trim($_POST['name']),
+                    'name' => trim($inputData['name']),
                     'slug' => $slug,
-                    'description' => trim($_POST['description'] ?? ''),
-                    'price' => (float)$_POST['price'],
-                    'sale_price' => !empty($_POST['sale_price']) ? (float)$_POST['sale_price'] : null,
-                    'category_id' => (int)$_POST['category_id'],
-                    'brand_id' => !empty($_POST['brand_id']) ? (int)$_POST['brand_id'] : null,
-                    'stock' => (int)($_POST['stock'] ?? 0),
-                    'sku' => trim($_POST['sku'] ?? ''),
-                    'tags' => trim($_POST['tags'] ?? ''),
-                    'condition' => $_POST['condition'] ?? 'new',
-                    'flash_sale_eligible' => (int)($_POST['flash_sale_eligible'] ?? 0),
-                    'shipping_weight' => !empty($_POST['shipping_weight']) ? (float)$_POST['shipping_weight'] : null,
-                    'handling_days' => !empty($_POST['handling_days']) ? (int)$_POST['handling_days'] : null,
-                    'shipping_profile_id' => !empty($_POST['shipping_profile_id']) ? (int)$_POST['shipping_profile_id'] : null,
-                    'free_shipping' => (int)($_POST['free_shipping'] ?? 0),
-                    'return_policy_id' => !empty($_POST['return_policy_id']) ? (int)$_POST['return_policy_id'] : null,
-                    'video_url' => trim($_POST['video_url'] ?? ''),
-                    'featured' => (int)($_POST['is_featured'] ?? 0),
-                    'dimensions_length' => !empty($_POST['length']) ? (float)$_POST['length'] : null,
-                    'dimensions_width' => !empty($_POST['width']) ? (float)$_POST['width'] : null,
-                    'dimensions_height' => !empty($_POST['height']) ? (float)$_POST['height'] : null,
-                    'bullet_points' => !empty($_POST['bullet_points']) ? $_POST['bullet_points'] : null,
+                    'description' => trim($inputData['description'] ?? ''),
+                    'price' => (float)$inputData['price'],
+                    'sale_price' => !empty($inputData['sale_price']) ? (float)$inputData['sale_price'] : null,
+                    'category_id' => (int)$inputData['category_id'],
+                    'brand_id' => !empty($inputData['brand_id']) ? (int)$inputData['brand_id'] : null,
+                    'stock' => (int)($inputData['stock'] ?? 0),
+                    'sku' => trim($inputData['sku'] ?? ''),
+                    'tags' => trim($inputData['tags'] ?? ''),
+                    'condition' => $inputData['condition'] ?? 'new',
+                    'flash_sale_eligible' => (int)($inputData['flash_sale_eligible'] ?? 0),
+                    'shipping_weight' => !empty($inputData['shipping_weight']) ? (float)$inputData['shipping_weight'] : null,
+                    'handling_days' => !empty($inputData['handling_days']) ? (int)$inputData['handling_days'] : null,
+                    'shipping_profile_id' => !empty($inputData['shipping_profile_id']) ? (int)$inputData['shipping_profile_id'] : null,
+                    'free_shipping' => (int)($inputData['free_shipping'] ?? 0),
+                    'return_policy_id' => !empty($inputData['return_policy_id']) ? (int)$inputData['return_policy_id'] : null,
+                    'video_url' => trim($inputData['video_url'] ?? ''),
+                    'featured' => (int)($inputData['is_featured'] ?? 0),
+                    'dimensions_length' => !empty($inputData['length']) ? (float)$inputData['length'] : null,
+                    'dimensions_width' => !empty($inputData['width']) ? (float)$inputData['width'] : null,
+                    'dimensions_height' => !empty($inputData['height']) ? (float)$inputData['height'] : null,
+                    'bullet_points' => !empty($inputData['bullet_points']) ? $inputData['bullet_points'] : null,
                     'status' => 'active',
                     'verification_status' => 'pending'
                 ];
@@ -207,8 +217,8 @@ try {
                 }
 
                 // Handle Variants
-                if (!empty($_POST['variants'])) {
-                    $variants = json_decode($_POST['variants'], true);
+                if (!empty($inputData['variants'])) {
+                    $variants = json_decode($inputData['variants'], true);
                     if (is_array($variants)) {
                         $stmt = $conn->prepare("DELETE FROM product_variants WHERE product_id = ?");
                         $stmt->execute([$product_id]);
