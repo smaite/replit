@@ -71,6 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $description = sanitize($_POST['product_description'] ?? '');
         $category_ids = isset($_POST['category_ids']) && is_array($_POST['category_ids']) ? array_map('intval', $_POST['category_ids']) : [];
         $price = (float)($_POST['price'] ?? 0);
+        $buy_price = (float)($_POST['buy_price'] ?? 0);
         $sale_price = (float)($_POST['sale_price'] ?? 0);
         $stock = (int)($_POST['stock'] ?? 0);
         $sku = sanitize($_POST['sku'] ?? '');
@@ -112,8 +113,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!is_dir($upload_dir)) {
                 mkdir($upload_dir, 0755, true);
             }
-
-            try {
+                        try {
                 $conn->beginTransaction();
 
                 // Generate slug
@@ -126,12 +126,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 // Insert product
                 $stmt = $conn->prepare("
                     INSERT INTO products (
-                        vendor_id, category_id, name, slug, description, price, sale_price, stock, sku, tags,
+                        vendor_id, category_id, name, slug, description, buy_price, price, sale_price, stock, sku, tags,
                         `condition`, brand_id, shipping_weight, shipping_profile_id, return_policy_id, video_url, bullet_points,
                         dimensions_length, dimensions_width, dimensions_height, handling_days, free_shipping, flash_sale_eligible, featured,
                         status, verification_status
                     ) VALUES (
-                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                         ?, ?, ?, ?, ?, ?, ?,
                         ?, ?, ?, ?, ?, ?, ?,
                         'active', 'pending'
@@ -144,6 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $name,
                     $slug,
                     $description,
+                    $buy_price,
                     $price,
                     $sale_price ?: null,
                     $stock,
@@ -168,6 +169,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $product_id = $conn->lastInsertId();
 
                 // Insert categories
+
                 $cat_stmt = $conn->prepare("INSERT INTO product_categories (product_id, category_id) VALUES (?, ?)");
                 foreach ($category_ids as $cat_id) {
                     try {
@@ -328,16 +330,16 @@ include '../includes/header.php';
         <!-- Pricing & Inventory -->
         <div class="mb-8">
             <h2 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Pricing & Inventory</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="price">Price (Rs.) *</label>
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="price">Sell Price (Rs.) *</label>
                     <input type="number" id="price" name="price" step="0.01" min="0" required
                         class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                         value="<?php echo htmlspecialchars($_POST['price'] ?? ''); ?>">
                 </div>
 
                 <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="sale_price">Sale Price (Rs.)</label>
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="sale_price">Discount Price (Rs.)</label>
                     <input type="number" id="sale_price" name="sale_price" step="0.01" min="0"
                         class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
                         value="<?php echo htmlspecialchars($_POST['sale_price'] ?? ''); ?>">
@@ -350,7 +352,7 @@ include '../includes/header.php';
                         value="<?php echo htmlspecialchars($_POST['stock'] ?? ''); ?>">
                 </div>
 
-                <div class="md:col-span-3">
+                <div class="md:col-span-4">
                     <label class="inline-flex items-center">
                         <input type="checkbox" name="flash_sale_eligible" class="form-checkbox h-5 w-5 text-primary" value="1">
                         <span class="ml-2 text-gray-700">Eligible for Flash Sales</span>

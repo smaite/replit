@@ -83,12 +83,24 @@ function handlePost() {
     
     try {
         // Check if product exists and has stock
-        $stmt = $conn->prepare("SELECT id, stock FROM products WHERE id = ? AND status = 'active'");
+        $stmt = $conn->prepare("SELECT id, stock, vendor_id FROM products WHERE id = ? AND status = 'active'");
         $stmt->execute([$productId]);
         $product = $stmt->fetch(PDO::FETCH_ASSOC);
         
         if (!$product) {
             jsonError('Product not found', 404);
+        }
+        
+        // Check if user is the vendor of this product (prevent self-purchase)
+        if ($product['vendor_id'] == $user['id']) {
+            jsonError('You cannot purchase your own product');
+        }
+        
+        // Also check if user has a vendor record that matches
+        $vendorCheck = $conn->prepare("SELECT id FROM vendors WHERE user_id = ? AND id = ?");
+        $vendorCheck->execute([$user['id'], $product['vendor_id']]);
+        if ($vendorCheck->fetch()) {
+            jsonError('You cannot purchase your own product');
         }
         
         if ($product['stock'] < $quantity) {
