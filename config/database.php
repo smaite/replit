@@ -1,9 +1,9 @@
 <?php
 // Database Configuration
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'sastohub');
+define('DB_HOST', '192.250.229.92');
+define('DB_USER', 'glorious_maxv');
+define('DB_PASS', 'glorious_maxv');
+define('DB_NAME', 'glorious_maxv');
 // Database Configuration - Using Replit PostgreSQL
 $database_url = getenv('DATABASE_URL');
 // Create connection

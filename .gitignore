@@ -4,5 +4,6 @@ vendor/
 /uploads/products
 /pathlas
 /sasto_hub
-
+/.CLAUDE
 /php
+.txt
