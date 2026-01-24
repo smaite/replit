@@ -49,6 +49,14 @@ if (isLoggedIn()) {
     $_SESSION['cart_count'] = $stmt->fetch()['count'] ?? 0;
 }
 
+// Fetch Wishlist IDs
+$wishlist_product_ids = [];
+if (isLoggedIn()) {
+    $stmt = $conn->prepare("SELECT product_id FROM wishlist WHERE user_id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $wishlist_product_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+}
+
 require_once 'includes/header.php';
 ?>
 
@@ -263,9 +271,12 @@ require_once 'includes/header.php';
                             </div>
                         </div>
                     </a>
-                    <button onclick="addToCart(<?php echo $product['id']; ?>)" 
-                            class="absolute top-3 right-3 w-8 h-8 bg-white text-primary rounded-full shadow border border-gray-100 flex items-center justify-center hover:bg-primary hover:text-white transition z-10">
-                        <i class="fas fa-heart"></i>
+                    <?php
+                    $in_wishlist = in_array($product['id'], $wishlist_product_ids);
+                    ?>
+                    <button onclick="toggleWishlist(<?php echo $product['id']; ?>, this)"
+                            class="absolute top-3 right-3 w-8 h-8 bg-white <?php echo $in_wishlist ? 'text-red-500' : 'text-gray-400'; ?> rounded-full shadow border border-gray-100 flex items-center justify-center hover:bg-gray-50 transition z-10">
+                        <i class="<?php echo $in_wishlist ? 'fas' : 'far'; ?> fa-heart"></i>
                     </button>
                 </div>
             <?php endforeach; ?>
@@ -275,35 +286,6 @@ require_once 'includes/header.php';
             <a href="/pages/products.php" class="inline-block bg-white border border-gray-300 text-gray-700 px-8 py-2.5 rounded-lg font-medium hover:bg-gray-50 transition">
                 Load More
             </a>
-        </div>
-    </div>
-</div>
-
-<!-- Features Footer -->
-<div class="bg-white border-t py-12 mt-12">
-    <div class="container mx-auto px-4">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div>
-                <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-primary text-xl">
-                    <i class="fas fa-lock"></i>
-                </div>
-                <h4 class="font-bold text-gray-900 mb-1">Secure Payment</h4>
-                <p class="text-sm text-gray-500">Have you ever finally just</p>
-            </div>
-            <div>
-                <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-primary text-xl">
-                    <i class="fas fa-comment-dots"></i>
-                </div>
-                <h4 class="font-bold text-gray-900 mb-1">Customer Support</h4>
-                <p class="text-sm text-gray-500">Have you ever finally just</p>
-            </div>
-            <div>
-                <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4 text-primary text-xl">
-                    <i class="fas fa-truck"></i>
-                </div>
-                <h4 class="font-bold text-gray-900 mb-1">Free Delivery</h4>
-                <p class="text-sm text-gray-500">Have you ever finally just</p>
-            </div>
         </div>
     </div>
 </div>

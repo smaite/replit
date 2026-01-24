@@ -24,114 +24,93 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $wishlist_id = (int)$_POST['wishlist_id'];
         $stmt = $conn->prepare("DELETE FROM wishlist WHERE id = ? AND user_id = ?");
         $stmt->execute([$wishlist_id, $_SESSION['user_id']]);
-        
+
         // Refresh the page
         redirect('/pages/wishlist.php');
     }
 }
 
-$page_title = 'Wishlist - SASTO Hub';
+$page_title = 'My Wishlist - SASTO Hub';
 include '../includes/header.php';
 ?>
 
-<div class="container mx-auto px-4 py-8">
-    <!-- Header -->
-    <div class="mb-8">
-        <a href="/pages/dashboard.php" class="text-primary hover:text-indigo-700 font-medium mb-4 inline-block">
-            <i class="fas fa-arrow-left"></i> Back to Dashboard
-        </a>
-        <h1 class="text-4xl font-bold text-gray-900">
-            <i class="fas fa-heart text-red-500"></i> My Wishlist
-        </h1>
-        <p class="text-gray-600 mt-2">Save your favorite items for later</p>
-    </div>
+<div class="bg-gray-50 min-h-screen py-8">
+    <div class="container mx-auto px-4">
+        <!-- Breadcrumb -->
+        <nav class="flex mb-8 text-sm text-gray-500">
+            <a href="/" class="hover:text-primary">Home</a>
+            <span class="mx-2">/</span>
+            <a href="/pages/dashboard.php" class="hover:text-primary">My Account</a>
+            <span class="mx-2">/</span>
+            <span class="text-gray-900 font-medium">Wishlist</span>
+        </nav>
 
-    <?php if (empty($wishlist_items)): ?>
-        <!-- Empty State -->
-        <div class="bg-white rounded-lg shadow p-12 text-center">
-            <i class="fas fa-heart text-6xl text-gray-300 mb-4"></i>
-            <h2 class="text-2xl font-bold text-gray-900 mb-2">Your Wishlist is Empty</h2>
-            <p class="text-gray-600 mb-6">Add products to your wishlist by clicking the heart icon on any product</p>
-            <a href="/pages/products.php" class="inline-block bg-primary text-white px-8 py-3 rounded-lg hover:bg-indigo-700 font-medium">
-                <i class="fas fa-shopping-bag"></i> Browse Products
-            </a>
-        </div>
-    <?php else: ?>
-        <!-- Wishlist Info -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-            <p class="text-blue-800">
-                <i class="fas fa-info-circle"></i> You have <strong><?php echo count($wishlist_items); ?></strong> item<?php echo count($wishlist_items) !== 1 ? 's' : ''; ?> in your wishlist
-            </p>
+        <div class="flex items-center justify-between mb-8">
+            <h1 class="text-3xl font-bold text-gray-900">My Wishlist</h1>
+            <span class="text-gray-500 text-sm"><?php echo count($wishlist_items); ?> Items</span>
         </div>
 
-        <!-- Wishlist Items Grid -->
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
-            <?php foreach ($wishlist_items as $item): ?>
-                <div class="bg-white rounded-lg shadow hover:shadow-xl transition group">
-                    <div class="relative overflow-hidden rounded-t-lg">
-                        <img src="<?php echo htmlspecialchars($item['image_path'] ?? 'https://via.placeholder.com/300'); ?>" 
-                             alt="<?php echo htmlspecialchars($item['name']); ?>"
-                             class="w-full h-48 object-cover group-hover:scale-110 transition-transform duration-300">
-                        
-                        <?php if ($item['sale_price']): ?>
-                            <span class="absolute top-2 right-2 bg-red-500 text-white text-xs px-2 py-1 rounded font-bold">
-                                SALE
-                            </span>
-                        <?php endif; ?>
-
-                        <!-- Remove from Wishlist Button -->
-                        <form method="POST" action="" class="absolute top-2 left-2">
+        <?php if (empty($wishlist_items)): ?>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-16 text-center max-w-2xl mx-auto">
+                <div class="w-24 h-24 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <i class="far fa-heart text-4xl text-red-400"></i>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-900 mb-2">Your Wishlist is Empty</h2>
+                <p class="text-gray-500 mb-8">Tap the heart icon on any product to save it for later.</p>
+                <a href="/pages/products.php" class="inline-flex items-center justify-center px-8 py-3 bg-primary text-white font-bold rounded-xl hover:bg-indigo-700 transition transform hover:-translate-y-0.5">
+                    Start Exploring
+                </a>
+            </div>
+        <?php else: ?>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+                <?php foreach ($wishlist_items as $item): ?>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all group relative">
+                        <!-- Remove Button (Top Right) -->
+                        <form method="POST" action="" class="absolute top-3 right-3 z-10">
                             <?php echo csrfField(); ?>
                             <input type="hidden" name="action" value="remove">
                             <input type="hidden" name="wishlist_id" value="<?php echo $item['wishlist_id']; ?>">
-                            <button type="submit" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-full transition">
-                                <i class="fas fa-heart"></i>
+                            <button type="submit" class="w-8 h-8 bg-white/90 backdrop-blur text-red-500 rounded-full shadow-sm flex items-center justify-center hover:bg-red-500 hover:text-white transition" title="Remove from Wishlist">
+                                <i class="fas fa-times"></i>
                             </button>
                         </form>
-                    </div>
 
-                    <div class="p-4">
-
-                        <a href="/pages/product-detail.php?slug=<?php echo htmlspecialchars($item['slug']); ?>">
-                            <h3 class="font-bold text-gray-900 hover:text-primary line-clamp-2">
-                                <?php echo htmlspecialchars($item['name']); ?>
-                            </h3>
+                        <a href="/pages/product-detail.php?slug=<?php echo htmlspecialchars($item['slug']); ?>" class="block relative pt-[100%] bg-gray-50">
+                            <img src="<?php echo htmlspecialchars($item['image_path'] ?? 'https://via.placeholder.com/300'); ?>"
+                                 alt="<?php echo htmlspecialchars($item['name']); ?>"
+                                 class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                            <?php if ($item['sale_price']): ?>
+                                <div class="absolute bottom-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
+                                    -<?php echo round((($item['price'] - $item['sale_price']) / $item['price']) * 100); ?>%
+                                </div>
+                            <?php endif; ?>
                         </a>
 
-                        <div class="mt-3 mb-3">
-                            <div class="flex items-center gap-2">
-                                <?php for ($i = 0; $i < 5; $i++): ?>
-                                    <i class="fas fa-star text-yellow-400"></i>
-                                <?php endfor; ?>
-                                <span class="text-xs text-gray-600">(0)</span>
+                        <div class="p-4">
+                            <div class="mb-1 text-xs text-gray-500"><?php echo htmlspecialchars($item['shop_name']); ?></div>
+                            <a href="/pages/product-detail.php?slug=<?php echo htmlspecialchars($item['slug']); ?>">
+                                <h3 class="font-bold text-gray-900 hover:text-primary line-clamp-2 mb-2 text-sm leading-snug min-h-[2.5em]">
+                                    <?php echo htmlspecialchars($item['name']); ?>
+                                </h3>
+                            </a>
+
+                            <div class="flex items-baseline gap-2 mb-4">
+                                <span class="text-lg font-bold text-gray-900"><?php echo formatPrice($item['sale_price'] ?? $item['price']); ?></span>
+                                <?php if ($item['sale_price']): ?>
+                                    <span class="text-xs text-gray-400 line-through"><?php echo formatPrice($item['price']); ?></span>
+                                <?php endif; ?>
                             </div>
-                        </div>
 
-                        <div class="mt-2 mb-4">
-                            <?php if ($item['sale_price']): ?>
-                                <span class="text-lg font-bold text-red-600"><?php echo formatPrice($item['sale_price']); ?></span>
-                                <span class="text-sm text-gray-500 line-through ml-2"><?php echo formatPrice($item['price']); ?></span>
-                            <?php else: ?>
-                                <span class="text-lg font-bold text-primary"><?php echo formatPrice($item['price']); ?></span>
-                            <?php endif; ?>
+                            <button onclick="addToCart(<?php echo $item['id']; ?>)"
+                                    class="w-full py-2.5 rounded-lg border border-primary text-primary font-bold text-sm hover:bg-primary hover:text-white transition flex items-center justify-center gap-2">
+                                <i class="fas fa-cart-plus"></i> Add to Cart
+                            </button>
                         </div>
-
-                        <button onclick="addToCart(<?php echo $item['id']; ?>)" 
-                                class="w-full bg-primary hover:bg-indigo-700 text-white py-2 rounded-lg text-sm font-medium transition">
-                            <i class="fas fa-cart-plus"></i> Add to Cart
-                        </button>
                     </div>
-                </div>
-            <?php endforeach; ?>
-        </div>
-
-        <!-- Continue Shopping Button -->
-        <div class="text-center mb-8">
-            <a href="/pages/products.php" class="inline-block bg-gray-200 hover:bg-gray-300 text-gray-800 px-8 py-3 rounded-lg font-medium">
-                <i class="fas fa-arrow-left"></i> Continue Shopping
-            </a>
-        </div>
-    <?php endif; ?>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
 </div>
 
 <?php include '../includes/footer.php'; ?>

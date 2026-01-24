@@ -42,6 +42,14 @@ $review_stats = $stmt->fetch();
 $review_count = $review_stats['review_count'] ?? 0;
 $avg_rating = round($review_stats['avg_rating'] ?? 0, 1);
 
+// Check if in wishlist
+$in_wishlist = false;
+if (isLoggedIn()) {
+    $stmt = $conn->prepare("SELECT id FROM wishlist WHERE user_id = ? AND product_id = ?");
+    $stmt->execute([$_SESSION['user_id'], $product['id']]);
+    $in_wishlist = (bool)$stmt->fetch();
+}
+
 // Fetch sales stats
 $stmt = $conn->prepare("
     SELECT SUM(oi.quantity) as total_sold
@@ -241,8 +249,10 @@ include '../includes/header.php';
                                 class="w-full bg-primary hover:bg-indigo-700 text-white py-3 rounded-lg font-bold transition shadow-sm">
                             Add to cart
                         </button>
-                        <button class="w-full border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 py-2 rounded-lg font-medium transition flex items-center justify-center gap-2">
-                            <i class="far fa-heart"></i> Save for later
+                        <button onclick="toggleWishlist(<?php echo $product['id']; ?>, this)"
+                                class="w-full border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 py-2 rounded-lg font-medium transition flex items-center justify-center gap-2">
+                            <i class="<?php echo $in_wishlist ? 'fas text-red-500' : 'far'; ?> fa-heart"></i>
+                            <span><?php echo $in_wishlist ? 'Saved to Wishlist' : 'Save for later'; ?></span>
                         </button>
                     </div>
                 <?php else: ?>

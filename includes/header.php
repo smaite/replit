@@ -153,13 +153,24 @@
                 <div class="flex items-center gap-6 flex-shrink-0">
 
                     <!-- Location -->
+                    <?php
+                    $delivery_location = 'Kathmandu';
+                    if (isLoggedIn()) {
+                        try {
+                            $stmt = $conn->prepare("SELECT city FROM user_addresses WHERE user_id = ? ORDER BY is_default DESC LIMIT 1");
+                            $stmt->execute([$_SESSION['user_id']]);
+                            $loc = $stmt->fetch();
+                            if ($loc) $delivery_location = $loc['city'];
+                        } catch (Exception $e) {}
+                    }
+                    ?>
                     <a href="/pages/address-book.php" class="hidden xl:flex items-center gap-3 text-left hover:bg-gray-50 p-2 rounded-lg transition group">
                         <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 group-hover:text-primary group-hover:bg-primary/10 transition">
                             <i class="fas fa-map-marker-alt"></i>
                         </div>
                         <div>
                             <span class="block text-[10px] text-gray-500 leading-tight">Delivering to</span>
-                            <span class="block text-xs font-bold text-gray-900 truncate max-w-[100px]">Kathmandu</span>
+                            <span class="block text-xs font-bold text-gray-900 truncate max-w-[100px]"><?php echo htmlspecialchars($delivery_location); ?></span>
                         </div>
                     </a>
 

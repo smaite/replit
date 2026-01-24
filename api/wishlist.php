@@ -91,19 +91,28 @@ try {
             // Check if already in wishlist
             $stmt = $conn->prepare("SELECT id FROM wishlist WHERE user_id = ? AND product_id = ?");
             $stmt->execute([$user_id, $product_id]);
-            if ($stmt->fetch()) {
-                echo json_encode(['success' => true, 'message' => 'Already in wishlist']);
+            if ($row = $stmt->fetch()) {
+                // Remove from wishlist (Toggle)
+                $stmt = $conn->prepare("DELETE FROM wishlist WHERE id = ?");
+                $stmt->execute([$row['id']]);
+
+                echo json_encode([
+                    'success' => true,
+                    'message' => 'Removed from wishlist',
+                    'action' => 'removed'
+                ]);
                 exit;
             }
-            
+
             // Add to wishlist
             $stmt = $conn->prepare("INSERT INTO wishlist (user_id, product_id) VALUES (?, ?)");
             $stmt->execute([$user_id, $product_id]);
-            
+
             echo json_encode([
                 'success' => true,
                 'message' => 'Added to wishlist',
-                'wishlist_id' => $conn->lastInsertId()
+                'wishlist_id' => $conn->lastInsertId(),
+                'action' => 'added'
             ]);
             break;
             

@@ -80,6 +80,14 @@ $brands_query = "SELECT DISTINCT b.id, b.name FROM brands b
                  ORDER BY b.name LIMIT 10";
 $brands = $conn->query($brands_query)->fetchAll();
 
+// Fetch user's wishlist product IDs
+$wishlist_product_ids = [];
+if (isLoggedIn()) {
+    $stmt = $conn->prepare("SELECT product_id FROM wishlist WHERE user_id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $wishlist_product_ids = $stmt->fetchAll(PDO::FETCH_COLUMN);
+}
+
 include '../includes/header.php';
 ?>
 
@@ -423,11 +431,14 @@ include '../includes/header.php';
                             <div class="product-card">
                                 <div class="product-image-wrapper">
                                     <a href="/pages/product-detail.php?slug=<?php echo htmlspecialchars($product['slug']); ?>">
-                                        <img src="<?php echo htmlspecialchars($product['image_path'] ?? 'https://via.placeholder.com/300'); ?>" 
+                                        <img src="<?php echo htmlspecialchars($product['image_path'] ?? 'https://via.placeholder.com/300'); ?>"
                                              alt="<?php echo htmlspecialchars($product['name']); ?>">
                                     </a>
-                                    <div class="wishlist-btn" onclick="event.stopPropagation()">
-                                        <i class="far fa-heart"></i>
+                                    <?php
+                                    $in_wishlist = in_array($product['id'], $wishlist_product_ids);
+                                    ?>
+                                    <div class="wishlist-btn" onclick="toggleWishlist(<?php echo $product['id']; ?>, this)">
+                                        <i class="<?php echo $in_wishlist ? 'fas text-red-500' : 'far'; ?> fa-heart"></i>
                                     </div>
                                 </div>
                                 
