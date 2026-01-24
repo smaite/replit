@@ -91,7 +91,7 @@ include '../includes/header.php';
                     </button>
                 </form>
                 
-                <a href="/pages/order.php?id=<?php echo $orderId; ?>" class="inline-block mt-6 text-gray-500 hover:text-gray-700">
+                <a href="/pages/order-details.php?id=<?php echo $orderId; ?>" class="inline-block mt-6 text-gray-500 hover:text-gray-700">
                     Cancel and go back
                 </a>
                 

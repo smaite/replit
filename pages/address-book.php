@@ -123,105 +123,98 @@ include '../includes/header.php';
                     <i class="fas fa-check-circle"></i> <?php echo $success; ?>
                 </div>
             <?php endif; ?>
-
             <form method="POST" action="">
                 <?php echo csrfField(); ?>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Address Type *</label>
-                        <select name="address_type" required
-                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
-                            <option value="">Select type</option>
-                            <option value="home" <?php echo ($edit_address && $edit_address['address_type'] === 'home') ? 'selected' : ''; ?>>Home</option>
-                            <option value="office" <?php echo ($edit_address && $edit_address['address_type'] === 'office') ? 'selected' : ''; ?>>Office</option>
-                            <option value="other" <?php echo ($edit_address && $edit_address['address_type'] === 'other') ? 'selected' : ''; ?>>Other</option>
-                        </select>
+                        <label class="block text-sm font-medium text-gray-600 mb-2">Full Name *</label>
+                        <input type="text" name="full_name" required
+                               value="<?php echo htmlspecialchars($edit_address['full_name'] ?? ''); ?>"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+                               placeholder="Enter your first and last name">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
-                        <input type="text" name="full_name" required
-                               value="<?php echo htmlspecialchars($edit_address['full_name'] ?? ''); ?>"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-                               placeholder="Your full name">
+                        <label class="block text-sm font-medium text-gray-600 mb-2">Phone Number *</label>
+                        <input type="tel" name="phone" required
+                               value="<?php echo htmlspecialchars($edit_address['phone'] ?? ''); ?>"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+                               placeholder="Please enter your phone number">
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Phone Number *</label>
-                        <input type="tel" name="phone" required
-                               value="<?php echo htmlspecialchars($edit_address['phone'] ?? ''); ?>"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-                               placeholder="+977-9800000000">
+                        <label class="block text-sm font-medium text-gray-600 mb-2">Region *</label>
+                        <select name="state" id="province_select" required onchange="updateCities()"
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary bg-white">
+                            <option value="">Select Region</option>
+                        </select>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Country *</label>
-                        <input type="text" name="country" required
-                               value="<?php echo htmlspecialchars($edit_address['country'] ?? 'Nepal'); ?>"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-                               placeholder="Nepal">
+                        <label class="block text-sm font-medium text-gray-600 mb-2">City *</label>
+                        <select name="city" id="city_select" required
+                                class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary bg-white">
+                            <option value="">Select City</option>
+                        </select>
                     </div>
                 </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-2">Building / House No / Floor / Street *</label>
+                        <input type="text" name="address_line1" required
+                               value="<?php echo htmlspecialchars($edit_address['address_line1'] ?? ''); ?>"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+                               placeholder="Please enter">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-2">Area</label>
+                        <input type="text" name="address_line2"
+                               value="<?php echo htmlspecialchars($edit_address['address_line2'] ?? ''); ?>"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
+                               placeholder="Please choose your area">
+                    </div>
+                </div>
+                
+                <!-- Hidden fields for compatibility -->
+                <input type="hidden" name="country" value="Nepal">
+                <input type="hidden" name="postal_code" value="00000">
 
                 <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Address Line 1 *</label>
-                    <input type="text" name="address_line1" required
-                           value="<?php echo htmlspecialchars($edit_address['address_line1'] ?? ''); ?>"
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-                           placeholder="House No., Building, Street">
-                </div>
-
-                <div class="mb-6">
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Address Line 2</label>
-                    <input type="text" name="address_line2"
-                           value="<?php echo htmlspecialchars($edit_address['address_line2'] ?? ''); ?>"
-                           class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-                           placeholder="Apartment, Suite, etc. (Optional)">
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">City *</label>
-                        <input type="text" name="city" required
-                               value="<?php echo htmlspecialchars($edit_address['city'] ?? ''); ?>"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-                               placeholder="Kathmandu">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">State/Province</label>
-                        <input type="text" name="state"
-                               value="<?php echo htmlspecialchars($edit_address['state'] ?? ''); ?>"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-                               placeholder="State">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Postal Code *</label>
-                        <input type="text" name="postal_code" required
-                               value="<?php echo htmlspecialchars($edit_address['postal_code'] ?? ''); ?>"
-                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"
-                               placeholder="44600">
+                    <label class="block text-sm font-medium text-gray-600 mb-3">Select a label for effective delivery:</label>
+                    <input type="hidden" name="address_type" id="address_type" value="<?php echo htmlspecialchars($edit_address['address_type'] ?? 'home'); ?>">
+                    <div class="flex gap-4">
+                        <button type="button" id="label_office" onclick="selectLabel('office')"
+                                class="flex items-center gap-2 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition <?php echo ($edit_address && $edit_address['address_type'] === 'office') ? 'ring-2 ring-primary bg-indigo-50' : ''; ?>">
+                            <i class="fas fa-briefcase text-gray-500"></i>
+                            <span class="font-medium text-gray-700">OFFICE</span>
+                        </button>
+                        <button type="button" id="label_home" onclick="selectLabel('home')"
+                                class="flex items-center gap-2 px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition <?php echo (!$edit_address || $edit_address['address_type'] === 'home') ? 'ring-2 ring-primary bg-indigo-50' : ''; ?>">
+                            <i class="fas fa-home text-gray-500"></i>
+                            <span class="font-medium text-gray-700">HOME</span>
+                        </button>
                     </div>
                 </div>
 
-                <div class="mb-6">
+                <div class="mb-8">
                     <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" name="is_default" <?php echo ($edit_address && $edit_address['is_default']) ? 'checked' : ''; ?>
-                               class="w-4 h-4 rounded">
+                               class="w-4 h-4 rounded text-primary focus:ring-primary">
                         <span class="text-sm font-medium text-gray-700">Set as default address</span>
                     </label>
                 </div>
 
                 <div class="flex gap-4">
-                    <button type="submit" class="flex-1 bg-primary hover:bg-indigo-700 text-white py-3 rounded-lg font-medium transition">
-                        <i class="fas fa-save"></i> <?php echo $action === 'edit' ? 'Update Address' : 'Add Address'; ?>
+                    <button type="submit" class="px-8 py-3 bg-[#0095A0] hover:bg-[#007f8a] text-white font-bold rounded shadow-lg transition">
+                        <?php echo $action === 'edit' ? 'UPDATE ADDRESS' : 'SAVE ADDRESS'; ?>
                     </button>
-                    <a href="/pages/address-book.php" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-900 py-3 rounded-lg font-medium text-center transition">
-                        <i class="fas fa-times"></i> Cancel
+                    <a href="/pages/address-book.php" class="px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded transition">
+                        CANCEL
                     </a>
                 </div>
             </form>
@@ -290,5 +283,70 @@ include '../includes/header.php';
         <?php endif; ?>
     <?php endif; ?>
 </div>
+
+<script>
+    // Load location data
+    const locationData = <?php echo file_get_contents('../location.json'); ?>;
+    const editState = "<?php echo $edit_address['state'] ?? ''; ?>";
+    const editCity = "<?php echo $edit_address['city'] ?? ''; ?>";
+
+    function updateCities() {
+        const provinceSelect = document.getElementById('province_select');
+        const citySelect = document.getElementById('city_select');
+        const selectedProvince = provinceSelect.value;
+        
+        // Clear current cities
+        citySelect.innerHTML = '<option value="">Select City</option>';
+        
+        if (selectedProvince && locationData[selectedProvince]) {
+            locationData[selectedProvince].forEach(city => {
+                const option = document.createElement('option');
+                option.value = city;
+                option.textContent = city;
+                if (city === editCity) {
+                    option.selected = true;
+                }
+                citySelect.appendChild(option);
+            });
+        }
+    }
+
+    function selectLabel(label) {
+        // Visual updates
+        document.getElementById('label_home').classList.remove('ring-2', 'ring-primary', 'bg-indigo-50');
+        document.getElementById('label_office').classList.remove('ring-2', 'ring-primary', 'bg-indigo-50');
+        
+        if (label === 'home') {
+            document.getElementById('label_home').classList.add('ring-2', 'ring-primary', 'bg-indigo-50');
+            document.getElementById('address_type').value = 'home';
+        } else {
+            document.getElementById('label_office').classList.add('ring-2', 'ring-primary', 'bg-indigo-50');
+            document.getElementById('address_type').value = 'office';
+        }
+    }
+
+    // Initialize
+    document.addEventListener('DOMContentLoaded', () => {
+        const provinceSelect = document.getElementById('province_select');
+        
+        // Populate Provinces
+        if (provinceSelect) {
+            Object.keys(locationData).forEach(province => {
+                const option = document.createElement('option');
+                option.value = province;
+                option.textContent = province;
+                if (province === editState) {
+                    option.selected = true;
+                }
+                provinceSelect.appendChild(option);
+            });
+
+            // Trigger city update if editing
+            if (editState) {
+                updateCities();
+            }
+        }
+    });
+</script>
 
 <?php include '../includes/footer.php'; ?>
