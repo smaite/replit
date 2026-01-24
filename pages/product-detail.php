@@ -90,11 +90,12 @@ include '../includes/header.php';
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 bg-white rounded-lg shadow-lg p-8">
         <!-- Col 1: Product Images -->
         <div class="lg:col-span-1">
-            <div class="mb-4 border border-gray-200 rounded-lg p-2">
+            <!-- Main Image with Zoom -->
+            <div class="mb-4 border border-gray-200 rounded-lg p-2 relative group overflow-hidden" id="img-container">
                 <img id="mainImage"
                      src="<?php echo htmlspecialchars($images[0]['image_path'] ?? 'https://via.placeholder.com/600'); ?>"
                      alt="<?php echo htmlspecialchars($product['name']); ?>"
-                     class="w-full h-80 object-contain rounded-lg">
+                     class="w-full h-80 object-contain rounded-lg transition-transform duration-200 origin-center cursor-crosshair">
             </div>
 
             <?php if (count($images) > 1): ?>
@@ -102,11 +103,41 @@ include '../includes/header.php';
                     <?php foreach ($images as $img): ?>
                         <img src="<?php echo htmlspecialchars($img['image_path']); ?>"
                              alt="Product image"
-                             onclick="document.getElementById('mainImage').src = this.src"
-                             class="w-full h-16 object-cover rounded cursor-pointer hover:opacity-75 border border-gray-200 hover:border-primary">
+                             onclick="changeMainImage(this.src)"
+                             class="w-full h-16 object-cover rounded cursor-pointer hover:opacity-75 border border-gray-200 hover:border-primary transition">
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
+            
+            <script>
+                function changeMainImage(src) {
+                    document.getElementById('mainImage').src = src;
+                }
+
+                // Zoom Logic
+                const container = document.getElementById('img-container');
+                const img = document.getElementById('mainImage');
+
+                container.addEventListener('mousemove', function(e) {
+                    const { left, top, width, height } = container.getBoundingClientRect();
+                    const x = e.clientX - left;
+                    const y = e.clientY - top;
+                    
+                    // Calculate percentage position
+                    const xPercent = (x / width) * 100;
+                    const yPercent = (y / height) * 100;
+
+                    img.style.transformOrigin = `${xPercent}% ${yPercent}%`;
+                    img.style.transform = 'scale(2)'; // Zoom level
+                });
+
+                container.addEventListener('mouseleave', function() {
+                    img.style.transform = 'scale(1)';
+                    setTimeout(() => {
+                        img.style.transformOrigin = 'center center';
+                    }, 200);
+                });
+            </script>
         </div>
 
         <!-- Col 2: Product Info -->

@@ -138,7 +138,8 @@ if (isset($_GET['delete_image'])) {
 
             // 2. If no primary, pick the first available image
             if (!$primary) {
-                $stmt = $conn->prepare("SELECT id, image_path FROM product_images WHERE product_id = ? ORDER BY display_order ASC LIMIT 1");
+                // Order by ID ASC to get the "first" uploaded image in the list
+                $stmt = $conn->prepare("SELECT id, image_path FROM product_images WHERE product_id = ? ORDER BY id ASC LIMIT 1");
                 $stmt->execute([$product_id]);
                 $primary = $stmt->fetch();
 
