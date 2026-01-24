@@ -65,6 +65,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_product'])) {
             $category_id = (int)($_POST['category_id'] ?? 0);
             $stock = (int)($_POST['stock'] ?? 0);
             $sku = sanitize($_POST['sku'] ?? '');
+            $is_featured = isset($_POST['is_featured']) ? 1 : 0;
+            $status = sanitize($_POST['status'] ?? 'active');
 
             // Validation
             if (empty($name) || $price <= 0 || !$category_id) {
@@ -72,12 +74,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_product'])) {
             } else {
                 // Update product
                 $stmt = $conn->prepare("
-                    UPDATE products SET 
+                    UPDATE products SET
                         name = ?, description = ?, price = ?, sale_price = ?,
-                        category_id = ?, stock = ?, sku = ?, updated_at = NOW()
+                        category_id = ?, stock = ?, sku = ?, featured = ?, status = ?, updated_at = NOW()
                     WHERE id = ? AND vendor_id = ?
                 ");
-                $stmt->execute([$name, $description, $price, $sale_price, $category_id, $stock, $sku, $product_id, $vendor_id]);
+                $stmt->execute([$name, $description, $price, $sale_price, $category_id, $stock, $sku, $is_featured, $status, $product_id, $vendor_id]);
 
                 // Handle new image uploads
                 if (!empty($_FILES['images']['name'][0])) {
@@ -162,15 +164,6 @@ if (isset($_GET['set_primary'])) {
         $stmt = $conn->prepare("UPDATE product_images SET is_primary = 1 WHERE id = ? AND product_id = ?");
         $stmt->execute([$image_id, $product_id]);
 
-        // Update products main image
-        $stmt = $conn->prepare("SELECT image_path FROM product_images WHERE id = ?");
-        $stmt->execute([$image_id]);
-        $img = $stmt->fetch();
-        if ($img) {
-            $stmt = $conn->prepare("UPDATE products SET image = ? WHERE id = ?");
-            $stmt->execute([$img['image_path'], $product_id]);
-        }
-
         $success = 'Primary image updated.';
 
         // Reload images
@@ -183,205 +176,271 @@ if (isset($_GET['set_primary'])) {
 }
 
 $page_title = 'Edit Product - ' . htmlspecialchars($product['name'] ?? 'Product');
-include '../includes/seller_header.php';
+include '../includes/header.php';
 ?>
 
-<div class="container mx-auto px-4 py-8">
-    <div class="max-w-4xl mx-auto">
-        <!-- Header -->
-        <div class="mb-8 flex items-center justify-between">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900">Edit Product</h1>
-                <p class="text-gray-600 mt-1">Update your product details</p>
-            </div>
-            <a href="/seller/products.php" class="bg-gray-300 hover:bg-gray-400 text-gray-900 px-6 py-2 rounded-lg font-medium">
-                <i class="fas fa-arrow-left mr-2"></i> Back to Products
-            </a>
-        </div>
+<div class="bg-gray-50 min-h-screen py-8">
+    <div class="container mx-auto px-4">
+        <!-- Breadcrumb -->
+        <nav class="flex mb-8 text-sm text-gray-500">
+            <a href="/" class="hover:text-primary">Home</a>
+            <span class="mx-2">/</span>
+            <a href="/seller/" class="hover:text-primary">Seller Dashboard</a>
+            <span class="mx-2">/</span>
+            <a href="/seller/products.php" class="hover:text-primary">My Products</a>
+            <span class="mx-2">/</span>
+            <span class="text-gray-900 font-medium">Edit Product</span>
+        </nav>
 
-        <?php if ($error): ?>
-            <div class="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-lg mb-6">
-                <i class="fas fa-exclamation-circle"></i> <?php echo $error; ?>
-            </div>
-        <?php endif; ?>
-
-        <?php if ($success): ?>
-            <div class="bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-lg mb-6">
-                <i class="fas fa-check-circle"></i> <?php echo $success; ?>
-            </div>
-        <?php endif; ?>
-
-        <form method="POST" enctype="multipart/form-data" class="bg-white rounded-lg shadow-lg p-8">
-            <input type="hidden" name="csrf_token" value="<?php echo generateCsrfToken(); ?>">
-            <input type="hidden" name="update_product" value="1">
-
-            <!-- Basic Info -->
-            <div class="mb-8">
-                <h2 class="text-xl font-bold text-gray-900 mb-4">
-                    <i class="fas fa-info-circle text-primary"></i> Basic Information
-                </h2>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div class="md:col-span-2">
-                        <label class="block text-gray-700 font-medium mb-2">Product Name *</label>
-                        <input type="text" name="name" value="<?php echo htmlspecialchars($product['name'] ?? ''); ?>" required
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
-                    </div>
-
-                    <div class="md:col-span-2">
-                        <label class="block text-gray-700 font-medium mb-2">Description</label>
-                        <textarea name="description" rows="4"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary"><?php echo htmlspecialchars($product['description'] ?? ''); ?></textarea>
-                    </div>
-
-                    <div>
-                        <label class="block text-gray-700 font-medium mb-2">Category *</label>
-                        <select name="category_id" required
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
-                            <option value="">Select Category</option>
-                            <?php foreach ($categories as $cat): ?>
-                                <option value="<?php echo $cat['id']; ?>" <?php echo $product['category_id'] == $cat['id'] ? 'selected' : ''; ?>>
-                                    <?php echo htmlspecialchars($cat['name']); ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-gray-700 font-medium mb-2">SKU</label>
-                        <input type="text" name="sku" value="<?php echo htmlspecialchars($product['sku'] ?? ''); ?>"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pricing -->
-            <div class="mb-8">
-                <h2 class="text-xl font-bold text-gray-900 mb-4">
-                    <i class="fas fa-tag text-primary"></i> Pricing & Stock
-                </h2>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                        <label class="block text-gray-700 font-medium mb-2">Regular Price (Rs.) *</label>
-                        <input type="number" name="price" step="0.01" min="0" value="<?php echo $product['price'] ?? ''; ?>" required
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
-                    </div>
-
-                    <div>
-                        <label class="block text-gray-700 font-medium mb-2">Sale Price (Rs.)</label>
-                        <input type="number" name="sale_price" step="0.01" min="0" value="<?php echo $product['sale_price'] ?? ''; ?>"
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
-                    </div>
-
-                    <div>
-                        <label class="block text-gray-700 font-medium mb-2">Stock Quantity *</label>
-                        <input type="number" name="stock" min="0" value="<?php echo $product['stock'] ?? 0; ?>" required
-                            class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Current Images -->
-            <div class="mb-8">
-                <h2 class="text-xl font-bold text-gray-900 mb-4">
-                    <i class="fas fa-images text-primary"></i> Product Images
-                </h2>
-
-                <?php if (!empty($images)): ?>
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                        <?php foreach ($images as $img): ?>
-                            <div class="relative group">
-                                <img src="<?php echo htmlspecialchars($img['image_path']); ?>"
-                                    class="w-full h-32 object-cover rounded-lg border <?php echo $img['is_primary'] ? 'border-primary border-2' : 'border-gray-200'; ?>">
-
-                                <?php if ($img['is_primary']): ?>
-                                    <span class="absolute top-2 left-2 bg-primary text-white text-xs px-2 py-1 rounded">Primary</span>
-                                <?php endif; ?>
-
-                                <div class="absolute inset-0 bg-black bg-opacity-50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2 rounded-lg">
-                                    <?php if (!$img['is_primary']): ?>
-                                        <a href="?id=<?php echo $product_id; ?>&set_primary=<?php echo $img['id']; ?>"
-                                            class="bg-white text-primary p-2 rounded-full hover:bg-gray-100" title="Set as Primary">
-                                            <i class="fas fa-star"></i>
-                                        </a>
-                                    <?php endif; ?>
-                                    <a href="?id=<?php echo $product_id; ?>&delete_image=<?php echo $img['id']; ?>"
-                                        class="bg-white text-red-500 p-2 rounded-full hover:bg-gray-100" title="Delete"
-                                        onclick="return confirm('Delete this image?')">
-                                        <i class="fas fa-trash"></i>
-                                    </a>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                <?php else: ?>
-                    <p class="text-gray-500 mb-4">No images uploaded yet.</p>
-                <?php endif; ?>
-
+        <div class="max-w-5xl mx-auto">
+            <div class="flex items-center justify-between mb-8">
                 <div>
-                    <label class="block text-gray-700 font-medium mb-2">Add More Images</label>
-                    <input type="file" name="images[]" multiple accept="image/jpeg,image/png,image/webp"
-                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:border-primary">
-                    <p class="text-xs text-gray-500 mt-1">JPG, PNG, or WebP. You can select multiple files.</p>
+                    <h1 class="text-3xl font-bold text-gray-900">Edit Product</h1>
+                    <p class="text-gray-500 mt-1">Update product information and inventory</p>
                 </div>
-            </div>
-
-            <!-- Status Info -->
-            <div class="mb-8 p-4 bg-gray-50 rounded-lg">
-                <div class="flex items-center gap-4">
-                    <span class="text-gray-700">Status:</span>
-                    <span class="px-3 py-1 rounded-full text-sm font-medium 
-                        <?php
-                        switch ($product['status']) {
-                            case 'active':
-                                echo 'bg-green-100 text-green-700';
-                                break;
-                            case 'draft':
-                                echo 'bg-yellow-100 text-yellow-700';
-                                break;
-                            case 'inactive':
-                                echo 'bg-red-100 text-red-700';
-                                break;
-                            default:
-                                echo 'bg-gray-100 text-gray-700';
-                        }
-                        ?>">
-                        <?php echo ucfirst($product['status'] ?? 'unknown'); ?>
-                    </span>
-
-                    <span class="text-gray-700 ml-4">Verification:</span>
-                    <span class="px-3 py-1 rounded-full text-sm font-medium 
-                        <?php
-                        switch ($product['verification_status'] ?? 'pending') {
-                            case 'approved':
-                                echo 'bg-green-100 text-green-700';
-                                break;
-                            case 'pending':
-                                echo 'bg-yellow-100 text-yellow-700';
-                                break;
-                            case 'rejected':
-                                echo 'bg-red-100 text-red-700';
-                                break;
-                            default:
-                                echo 'bg-gray-100 text-gray-700';
-                        }
-                        ?>">
-                        <?php echo ucfirst($product['verification_status'] ?? 'pending'); ?>
-                    </span>
-                </div>
-            </div>
-
-            <div class="flex gap-3">
-                <button type="submit" class="bg-primary hover:bg-indigo-700 text-white px-8 py-3 rounded-lg font-medium">
-                    <i class="fas fa-save mr-2"></i> Save Changes
-                </button>
-                <a href="/seller/products.php" class="bg-gray-300 hover:bg-gray-400 text-gray-900 px-8 py-3 rounded-lg font-medium">
+                <a href="/seller/products.php" class="bg-white border border-gray-200 text-gray-700 px-6 py-2.5 rounded-xl font-bold hover:bg-gray-50 transition">
                     Cancel
                 </a>
             </div>
-        </form>
+
+            <?php if ($error): ?>
+                <div class="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl mb-6 flex items-center gap-3">
+                    <i class="fas fa-exclamation-circle text-xl"></i>
+                    <div><?php echo htmlspecialchars($error); ?></div>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($success): ?>
+                <div class="bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-xl mb-6 flex items-center gap-3">
+                    <i class="fas fa-check-circle text-xl"></i>
+                    <div><?php echo htmlspecialchars($success); ?></div>
+                </div>
+            <?php endif; ?>
+
+            <form method="POST" enctype="multipart/form-data" class="space-y-8">
+                <input type="hidden" name="csrf_token" value="<?php echo generateCsrfToken(); ?>">
+                <input type="hidden" name="update_product" value="1">
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Left Column: Main Info -->
+                    <div class="lg:col-span-2 space-y-8">
+                        <!-- Basic Information -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                <i class="fas fa-info-circle text-primary"></i> Basic Information
+                            </h2>
+
+                            <div class="space-y-6">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">Product Title <span class="text-red-500">*</span></label>
+                                    <input type="text" name="name" required
+                                           class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                                           value="<?php echo htmlspecialchars($product['name'] ?? ''); ?>">
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">Description <span class="text-red-500">*</span></label>
+                                    <textarea name="description" rows="6" required
+                                              class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"><?php echo htmlspecialchars($product['description'] ?? ''); ?></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Media -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                <i class="fas fa-images text-primary"></i> Media
+                            </h2>
+
+                            <div class="space-y-6">
+                                <?php if (!empty($images)): ?>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                                        <?php foreach ($images as $img): ?>
+                                            <div class="relative group aspect-square rounded-xl overflow-hidden border <?php echo $img['is_primary'] ? 'border-primary ring-2 ring-primary ring-opacity-50' : 'border-gray-200'; ?>">
+                                                <img src="<?php echo htmlspecialchars($img['image_path']); ?>"
+                                                     class="w-full h-full object-cover">
+
+                                                <?php if ($img['is_primary']): ?>
+                                                    <span class="absolute top-2 left-2 bg-primary text-white text-xs font-bold px-2 py-1 rounded shadow-sm">Primary</span>
+                                                <?php endif; ?>
+
+                                                <div class="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                                    <?php if (!$img['is_primary']): ?>
+                                                        <a href="?id=<?php echo $product_id; ?>&set_primary=<?php echo $img['id']; ?>"
+                                                            class="bg-white text-primary p-2 rounded-full hover:bg-gray-100 transition-colors shadow-sm" title="Set as Primary">
+                                                            <i class="fas fa-star"></i>
+                                                        </a>
+                                                    <?php endif; ?>
+                                                    <a href="?id=<?php echo $product_id; ?>&delete_image=<?php echo $img['id']; ?>"
+                                                        class="bg-white text-red-500 p-2 rounded-full hover:bg-gray-100 transition-colors shadow-sm" title="Delete"
+                                                        onclick="return confirm('Delete this image?')">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                <?php else: ?>
+                                    <div class="bg-gray-50 border border-gray-200 rounded-xl p-8 text-center text-gray-500">
+                                        <i class="fas fa-image text-4xl mb-2 text-gray-300"></i>
+                                        <p>No images uploaded yet.</p>
+                                    </div>
+                                <?php endif; ?>
+
+                                <div class="p-8 border-2 border-dashed border-gray-300 rounded-xl hover:border-primary/50 transition-colors bg-gray-50/50 text-center">
+                                    <div class="mb-4">
+                                        <i class="fas fa-cloud-upload-alt text-4xl text-gray-300"></i>
+                                    </div>
+                                    <label class="block">
+                                        <span class="bg-primary text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-indigo-700 transition font-bold text-sm">Add More Images</span>
+                                        <input type="file" name="images[]" multiple accept="image/*" class="hidden" onchange="previewImages(this)">
+                                    </label>
+                                    <p class="text-xs text-gray-500 mt-2">JPG, PNG, WebP allowed.</p>
+                                </div>
+                                <div id="image-preview" class="grid grid-cols-5 gap-4"></div>
+                            </div>
+                        </div>
+
+                        <!-- Inventory -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                <i class="fas fa-boxes text-primary"></i> Inventory
+                            </h2>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">SKU</label>
+                                    <input type="text" name="sku"
+                                           class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                                           value="<?php echo htmlspecialchars($product['sku'] ?? ''); ?>">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">Stock Quantity <span class="text-red-500">*</span></label>
+                                    <input type="number" name="stock" min="0" required
+                                           class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                                           value="<?php echo htmlspecialchars($product['stock'] ?? ''); ?>">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Sidebar Settings -->
+                    <div class="space-y-8">
+                        <!-- Status -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <h2 class="text-xl font-bold text-gray-900 mb-6">Status</h2>
+
+                            <div class="mb-4">
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Product Status</label>
+                                <select name="status" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary appearance-none cursor-pointer">
+                                    <option value="active" <?php echo $product['status'] === 'active' ? 'selected' : ''; ?>>Active (Visible)</option>
+                                    <option value="inactive" <?php echo $product['status'] === 'inactive' ? 'selected' : ''; ?>>Inactive (Hidden)</option>
+                                    <option value="draft" <?php echo $product['status'] === 'draft' ? 'selected' : ''; ?>>Draft</option>
+                                </select>
+                            </div>
+
+                            <div class="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                                <div class="flex justify-between items-center text-sm mb-1">
+                                    <span class="font-bold text-indigo-900">Verification</span>
+                                    <span class="uppercase font-bold text-xs px-2 py-0.5 rounded bg-white text-indigo-600 border border-indigo-200">
+                                        <?php echo htmlspecialchars($product['verification_status'] ?? 'Pending'); ?>
+                                    </span>
+                                </div>
+                                <p class="text-xs text-indigo-700">Admin approval status</p>
+                            </div>
+                        </div>
+
+                        <!-- Pricing -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <h2 class="text-xl font-bold text-gray-900 mb-6">Pricing</h2>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">Regular Price <span class="text-red-500">*</span></label>
+                                    <div class="relative">
+                                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-500">Rs.</span>
+                                        <input type="number" name="price" step="0.01" min="0" required
+                                               class="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors font-bold text-gray-900"
+                                               value="<?php echo htmlspecialchars($product['price'] ?? ''); ?>">
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">Sale Price</label>
+                                    <div class="relative">
+                                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-500">Rs.</span>
+                                        <input type="number" name="sale_price" step="0.01" min="0"
+                                               class="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                                               value="<?php echo htmlspecialchars($product['sale_price'] ?? ''); ?>">
+                                    </div>
+                                </div>
+
+                                <div class="pt-2">
+                                    <label class="flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" name="is_featured" value="1" <?php echo $product['featured'] ? 'checked' : ''; ?> class="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary">
+                                        <span class="text-sm font-medium text-gray-700">Featured Product</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Organization -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <h2 class="text-xl font-bold text-gray-900 mb-6">Organization</h2>
+
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700 mb-2">Category <span class="text-red-500">*</span></label>
+                                <select name="category_id" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary appearance-none cursor-pointer">
+                                    <option value="">Select Category</option>
+                                    <?php foreach ($categories as $cat): ?>
+                                        <option value="<?php echo $cat['id']; ?>" <?php echo $product['category_id'] == $cat['id'] ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($cat['name']); ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Bar -->
+                <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg z-50">
+                    <div class="container mx-auto max-w-5xl flex justify-between items-center">
+                        <p class="text-sm text-gray-500 hidden sm:block">Unsaved changes will be lost.</p>
+                        <div class="flex gap-4">
+                            <a href="/seller/products.php" class="px-6 py-3 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition">
+                                Discard
+                            </a>
+                            <button type="submit" class="px-8 py-3 bg-primary hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition transform hover:-translate-y-0.5">
+                                Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="h-16"></div> <!-- Spacer for fixed footer -->
+            </form>
+        </div>
     </div>
 </div>
+
+<script>
+    function previewImages(input) {
+        const preview = document.getElementById('image-preview');
+        preview.innerHTML = '';
+
+        if (input.files) {
+            Array.from(input.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const div = document.createElement('div');
+                    div.className = 'relative aspect-square rounded-xl overflow-hidden border border-gray-200';
+                    div.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+                    preview.appendChild(div);
+                }
+                reader.readAsDataURL(file);
+            });
+        }
+    }
+</script>
 
 <?php include '../includes/footer.php'; ?>

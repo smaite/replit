@@ -8,8 +8,8 @@ if (!isLoggedIn() || !isVendor()) {
 }
 
 // Get vendor info
-$stmt = $conn->prepare("SELECT v.*, u.email, u.full_name FROM vendors v 
-                       JOIN users u ON v.user_id = u.id 
+$stmt = $conn->prepare("SELECT v.*, u.email, u.full_name FROM vendors v
+                       JOIN users u ON v.user_id = u.id
                        WHERE v.user_id = ?");
 $stmt->execute([$_SESSION['user_id']]);
 $vendor = $stmt->fetch();
@@ -29,218 +29,268 @@ foreach ($documents as $doc) {
     $docsByType[$doc['document_type']] = $doc;
 }
 
-$page_title = 'My Uploaded Documents';
-include '../includes/vendor_header.php';
+$page_title = 'My Documents - Seller Dashboard';
+include '../includes/header.php';
 ?>
 
-<div class="container mx-auto px-4 py-8">
-    <div class="max-w-4xl mx-auto">
-        <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-900">My Documents</h1>
-            <p class="text-gray-600 mt-2">View and manage your uploaded verification documents</p>
-        </div>
+<div class="bg-gray-50 min-h-screen py-8">
+    <div class="container mx-auto px-4">
+        <!-- Breadcrumb -->
+        <nav class="flex mb-8 text-sm text-gray-500">
+            <a href="/" class="hover:text-primary">Home</a>
+            <span class="mx-2">/</span>
+            <a href="/seller/" class="hover:text-primary">Seller Dashboard</a>
+            <span class="mx-2">/</span>
+            <span class="text-gray-900 font-medium">Documents</span>
+        </nav>
 
-        <!-- Application Status Alert -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-            <div class="flex items-start gap-4">
-                <i class="fas fa-info-circle text-2xl text-blue-600 mt-1"></i>
-                <div>
-                    <h3 class="font-bold text-blue-900 mb-2">Application Status</h3>
-                    <p class="text-blue-700 mb-3">
-                        Your vendor application is currently: 
-                        <span class="font-bold <?php 
-                            echo $vendor['status'] === 'approved' ? 'text-green-600' : 
-                                 ($vendor['status'] === 'rejected' ? 'text-red-600' : 
-                                  'text-yellow-600');
-                        ?>">
-                            <?php echo strtoupper($vendor['status']); ?>
-                        </span>
-                    </p>
-                    
-                    <?php if ($vendor['status'] === 'pending'): ?>
-                        <p class="text-sm text-blue-700">We're reviewing your documents. This usually takes 3-5 business days.</p>
-                    <?php elseif ($vendor['status'] === 'approved'): ?>
-                        <p class="text-sm text-green-700">✅ Your application has been approved! You can now start selling.</p>
-                    <?php elseif ($vendor['status'] === 'rejected'): ?>
-                        <div class="mt-3 bg-red-100 border border-red-300 rounded p-3">
-                            <p class="text-sm font-medium text-red-900 mb-1">Reason for Rejection:</p>
-                            <p class="text-sm text-red-700"><?php echo htmlspecialchars($vendor['rejection_reason']); ?></p>
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            <!-- Sidebar Navigation -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden sticky top-24">
+                    <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+                        <div class="flex items-center gap-4">
+                            <div class="w-14 h-14 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-2xl font-bold border border-indigo-200">
+                                <i class="fas fa-store"></i>
+                            </div>
+                            <div class="overflow-hidden">
+                                <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold">Shop Dashboard</p>
+                                <h3 class="font-bold text-gray-900 truncate"><?php echo htmlspecialchars($vendor['shop_name']); ?></h3>
+                            </div>
                         </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-
-        <!-- Document List -->
-        <div class="bg-white rounded-lg shadow-lg p-8">
-            <h2 class="text-2xl font-bold text-gray-900 mb-6">
-                <i class="fas fa-file-upload"></i> Verification Documents
-            </h2>
-
-            <p class="text-gray-600 mb-6">
-                You have uploaded <strong><?php echo count($documents); ?> of 4</strong> required documents.
-                <?php if (count($documents) < 4): ?>
-                    <span class="text-orange-600 font-medium">
-                        (Missing: <?php echo 4 - count($documents); ?> document(s))
-                    </span>
-                <?php else: ?>
-                    <span class="text-green-600 font-medium">✅ Complete</span>
-                <?php endif; ?>
-            </p>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <!-- National ID Front -->
-                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center <?php echo isset($docsByType['national_id_front']) ? 'bg-green-50 border-green-300' : 'bg-gray-50'; ?>">
-                    <div class="mb-3">
-                        <i class="fas fa-id-card text-4xl <?php echo isset($docsByType['national_id_front']) ? 'text-green-600' : 'text-gray-400'; ?>"></i>
                     </div>
-                    <h4 class="text-lg font-bold text-gray-900 mb-2">National ID - Front</h4>
-                    
-                    <?php if (isset($docsByType['national_id_front'])): ?>
-                        <p class="text-sm text-green-600 mb-3 font-medium">✅ Uploaded</p>
-                        <button type="button" onclick="previewDocument('<?php echo htmlspecialchars($docsByType['national_id_front']['document_url']); ?>', 'National ID - Front')" 
-                                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition mb-2 inline-block">
-                            <i class="fas fa-eye"></i> View
-                        </button>
-                        <a href="<?php echo htmlspecialchars($docsByType['national_id_front']['document_url']); ?>" download 
-                           class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition inline-block ml-2">
-                            <i class="fas fa-download"></i> Download
+                    <nav class="p-4 space-y-1">
+                        <a href="/seller/" class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-primary font-medium rounded-lg transition-colors group">
+                            <i class="fas fa-chart-line w-5 group-hover:text-primary transition-colors"></i> Dashboard
                         </a>
-                        <p class="text-xs text-gray-500 mt-3">
-                            Uploaded: <?php echo date('M d, Y', strtotime($docsByType['national_id_front']['created_at'])); ?>
-                        </p>
-                    <?php else: ?>
-                        <p class="text-sm text-red-600 font-medium mb-2">❌ Not Uploaded</p>
-                        <a href="/auth/become-vendor.php" class="text-primary hover:text-indigo-700 text-sm font-medium">
-                            <i class="fas fa-upload"></i> Upload Now
+                        <a href="/seller/products.php" class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-primary font-medium rounded-lg transition-colors group">
+                            <i class="fas fa-box w-5 group-hover:text-primary transition-colors"></i> My Products
                         </a>
-                    <?php endif; ?>
-                </div>
-
-                <!-- National ID Back -->
-                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center <?php echo isset($docsByType['national_id_back']) ? 'bg-green-50 border-green-300' : 'bg-gray-50'; ?>">
-                    <div class="mb-3">
-                        <i class="fas fa-id-card text-4xl <?php echo isset($docsByType['national_id_back']) ? 'text-green-600' : 'text-gray-400'; ?>"></i>
-                    </div>
-                    <h4 class="text-lg font-bold text-gray-900 mb-2">National ID - Back</h4>
-                    
-                    <?php if (isset($docsByType['national_id_back'])): ?>
-                        <p class="text-sm text-green-600 mb-3 font-medium">✅ Uploaded</p>
-                        <button type="button" onclick="previewDocument('<?php echo htmlspecialchars($docsByType['national_id_back']['document_url']); ?>', 'National ID - Back')" 
-                                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition mb-2 inline-block">
-                            <i class="fas fa-eye"></i> View
-                        </button>
-                        <a href="<?php echo htmlspecialchars($docsByType['national_id_back']['document_url']); ?>" download 
-                           class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition inline-block ml-2">
-                            <i class="fas fa-download"></i> Download
+                        <a href="/seller/add-product.php" class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-primary font-medium rounded-lg transition-colors group">
+                            <i class="fas fa-plus-circle w-5 group-hover:text-primary transition-colors"></i> Add Product
                         </a>
-                        <p class="text-xs text-gray-500 mt-3">
-                            Uploaded: <?php echo date('M d, Y', strtotime($docsByType['national_id_back']['created_at'])); ?>
-                        </p>
-                    <?php else: ?>
-                        <p class="text-sm text-red-600 font-medium mb-2">❌ Not Uploaded</p>
-                        <a href="/auth/become-vendor.php" class="text-primary hover:text-indigo-700 text-sm font-medium">
-                            <i class="fas fa-upload"></i> Upload Now
+                        <a href="/seller/orders.php" class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-primary font-medium rounded-lg transition-colors group">
+                            <i class="fas fa-shopping-cart w-5 group-hover:text-primary transition-colors"></i> Orders
                         </a>
-                    <?php endif; ?>
-                </div>
-
-                <!-- PAN/VAT Certificate -->
-                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center <?php echo isset($docsByType['pan_vat_document']) ? 'bg-green-50 border-green-300' : 'bg-gray-50'; ?>">
-                    <div class="mb-3">
-                        <i class="fas fa-file-certificate text-4xl <?php echo isset($docsByType['pan_vat_document']) ? 'text-green-600' : 'text-gray-400'; ?>"></i>
-                    </div>
-                    <h4 class="text-lg font-bold text-gray-900 mb-2">PAN/VAT Certificate</h4>
-                    
-                    <?php if (isset($docsByType['pan_vat_document'])): ?>
-                        <p class="text-sm text-green-600 mb-3 font-medium">✅ Uploaded</p>
-                        <button type="button" onclick="previewDocument('<?php echo htmlspecialchars($docsByType['pan_vat_document']['document_url']); ?>', 'PAN/VAT Certificate')" 
-                                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition mb-2 inline-block">
-                            <i class="fas fa-eye"></i> View
-                        </button>
-                        <a href="<?php echo htmlspecialchars($docsByType['pan_vat_document']['document_url']); ?>" download 
-                           class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition inline-block ml-2">
-                            <i class="fas fa-download"></i> Download
+                        <a href="/seller/settings.php" class="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 hover:text-primary font-medium rounded-lg transition-colors group">
+                            <i class="fas fa-cog w-5 group-hover:text-primary transition-colors"></i> Shop Settings
                         </a>
-                        <p class="text-xs text-gray-500 mt-3">
-                            Uploaded: <?php echo date('M d, Y', strtotime($docsByType['pan_vat_document']['created_at'])); ?>
-                        </p>
-                    <?php else: ?>
-                        <p class="text-sm text-red-600 font-medium mb-2">❌ Not Uploaded</p>
-                        <a href="/auth/become-vendor.php" class="text-primary hover:text-indigo-700 text-sm font-medium">
-                            <i class="fas fa-upload"></i> Upload Now
+                        <a href="/seller/documents.php" class="flex items-center gap-3 px-4 py-3 bg-primary/10 text-primary font-bold rounded-lg transition-colors">
+                            <i class="fas fa-file-alt w-5"></i> Documents
                         </a>
-                    <?php endif; ?>
-                </div>
-
-                <!-- Business Registration -->
-                <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center <?php echo isset($docsByType['business_registration']) ? 'bg-green-50 border-green-300' : 'bg-gray-50'; ?>">
-                    <div class="mb-3">
-                        <i class="fas fa-file-contract text-4xl <?php echo isset($docsByType['business_registration']) ? 'text-green-600' : 'text-gray-400'; ?>"></i>
-                    </div>
-                    <h4 class="text-lg font-bold text-gray-900 mb-2">Business Registration</h4>
-                    
-                    <?php if (isset($docsByType['business_registration'])): ?>
-                        <p class="text-sm text-green-600 mb-3 font-medium">✅ Uploaded</p>
-                        <button type="button" onclick="previewDocument('<?php echo htmlspecialchars($docsByType['business_registration']['document_url']); ?>', 'Business Registration')" 
-                                class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition mb-2 inline-block">
-                            <i class="fas fa-eye"></i> View
-                        </button>
-                        <a href="<?php echo htmlspecialchars($docsByType['business_registration']['document_url']); ?>" download 
-                           class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition inline-block ml-2">
-                            <i class="fas fa-download"></i> Download
-                        </a>
-                        <p class="text-xs text-gray-500 mt-3">
-                            Uploaded: <?php echo date('M d, Y', strtotime($docsByType['business_registration']['created_at'])); ?>
-                        </p>
-                    <?php else: ?>
-                        <p class="text-sm text-red-600 font-medium mb-2">❌ Not Uploaded</p>
-                        <a href="/auth/become-vendor.php" class="text-primary hover:text-indigo-700 text-sm font-medium">
-                            <i class="fas fa-upload"></i> Upload Now
-                        </a>
-                    <?php endif; ?>
+                    </nav>
                 </div>
             </div>
 
-            <!-- Document Summary -->
-            <?php if (count($documents) > 0): ?>
-                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                    <p class="text-sm text-blue-900">
-                        <i class="fas fa-info-circle"></i> 
-                        You can view and download your documents anytime. Once all documents are uploaded, your application will be reviewed by our team.
-                    </p>
+            <!-- Main Content -->
+            <div class="lg:col-span-3">
+                <div class="mb-8">
+                    <h1 class="text-3xl font-bold text-gray-900">Verification Documents</h1>
+                    <p class="text-gray-600 mt-1">Manage your business verification documents</p>
                 </div>
-            <?php endif; ?>
 
-            <!-- Action Button -->
-            <div class="border-t pt-6">
-                <a href="/seller/" class="bg-gray-300 hover:bg-gray-400 text-gray-900 px-6 py-3 rounded-lg font-medium transition inline-block">
-                    <i class="fas fa-arrow-left"></i> Back to Dashboard
-                </a>
+                <!-- Application Status Alert -->
+                <div class="bg-white border border-gray-200 rounded-xl p-6 mb-8 shadow-sm">
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-xl flex-shrink-0">
+                            <i class="fas fa-info-circle"></i>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-gray-900 mb-1">Application Status</h3>
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-gray-600">Current Status:</span>
+                                <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide <?php
+                                    echo $vendor['status'] === 'approved' ? 'bg-green-100 text-green-700' :
+                                         ($vendor['status'] === 'rejected' ? 'bg-red-100 text-red-700' :
+                                          'bg-yellow-100 text-yellow-700');
+                                ?>">
+                                    <?php echo $vendor['status']; ?>
+                                </span>
+                            </div>
+
+                            <?php if ($vendor['status'] === 'pending'): ?>
+                                <p class="text-sm text-gray-600">We're reviewing your documents. This usually takes 3-5 business days.</p>
+                            <?php elseif ($vendor['status'] === 'approved'): ?>
+                                <p class="text-sm text-green-600 font-medium">Your application has been approved! You can now start selling.</p>
+                            <?php elseif ($vendor['status'] === 'rejected'): ?>
+                                <div class="mt-2 bg-red-50 border border-red-100 rounded-lg p-3">
+                                    <p class="text-sm font-bold text-red-800 mb-1">Reason for Rejection:</p>
+                                    <p class="text-sm text-red-600"><?php echo htmlspecialchars($vendor['rejection_reason']); ?></p>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Document List -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+                    <div class="flex justify-between items-center mb-6">
+                        <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                            <i class="fas fa-file-upload text-primary"></i> Uploaded Documents
+                        </h2>
+                        <span class="text-sm font-medium px-3 py-1 bg-gray-100 text-gray-600 rounded-full">
+                            <?php echo count($documents); ?> / 4 Uploaded
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- National ID Front -->
+                        <div class="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center transition-colors <?php echo isset($docsByType['national_id_front']) ? 'bg-green-50/50 border-green-200' : 'bg-gray-50 hover:bg-gray-100'; ?>">
+                            <div class="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-id-card text-3xl <?php echo isset($docsByType['national_id_front']) ? 'text-green-500' : 'text-gray-400'; ?>"></i>
+                            </div>
+                            <h4 class="text-lg font-bold text-gray-900 mb-2">National ID - Front</h4>
+
+                            <?php if (isset($docsByType['national_id_front'])): ?>
+                                <div class="flex items-center justify-center gap-2 mb-4">
+                                    <i class="fas fa-check-circle text-green-500"></i>
+                                    <span class="text-sm text-green-700 font-bold">Uploaded</span>
+                                </div>
+                                <div class="flex justify-center gap-2">
+                                    <button type="button" onclick="previewDocument('<?php echo htmlspecialchars($docsByType['national_id_front']['document_url']); ?>', 'National ID - Front')"
+                                            class="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-50 transition shadow-sm">
+                                        <i class="fas fa-eye mr-1"></i> View
+                                    </button>
+                                    <a href="<?php echo htmlspecialchars($docsByType['national_id_front']['document_url']); ?>" download
+                                       class="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-50 transition shadow-sm">
+                                        <i class="fas fa-download mr-1"></i>
+                                    </a>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-4">
+                                    Uploaded: <?php echo date('M d, Y', strtotime($docsByType['national_id_front']['created_at'])); ?>
+                                </p>
+                            <?php else: ?>
+                                <p class="text-sm text-gray-500 mb-4">Not uploaded yet</p>
+                                <a href="/auth/become-vendor.php" class="inline-block px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition shadow-sm shadow-indigo-200">
+                                    <i class="fas fa-upload mr-1"></i> Upload Now
+                                </a>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- National ID Back -->
+                        <div class="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center transition-colors <?php echo isset($docsByType['national_id_back']) ? 'bg-green-50/50 border-green-200' : 'bg-gray-50 hover:bg-gray-100'; ?>">
+                            <div class="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-id-card text-3xl <?php echo isset($docsByType['national_id_back']) ? 'text-green-500' : 'text-gray-400'; ?>"></i>
+                            </div>
+                            <h4 class="text-lg font-bold text-gray-900 mb-2">National ID - Back</h4>
+
+                            <?php if (isset($docsByType['national_id_back'])): ?>
+                                <div class="flex items-center justify-center gap-2 mb-4">
+                                    <i class="fas fa-check-circle text-green-500"></i>
+                                    <span class="text-sm text-green-700 font-bold">Uploaded</span>
+                                </div>
+                                <div class="flex justify-center gap-2">
+                                    <button type="button" onclick="previewDocument('<?php echo htmlspecialchars($docsByType['national_id_back']['document_url']); ?>', 'National ID - Back')"
+                                            class="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-50 transition shadow-sm">
+                                        <i class="fas fa-eye mr-1"></i> View
+                                    </button>
+                                    <a href="<?php echo htmlspecialchars($docsByType['national_id_back']['document_url']); ?>" download
+                                       class="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-50 transition shadow-sm">
+                                        <i class="fas fa-download mr-1"></i>
+                                    </a>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-4">
+                                    Uploaded: <?php echo date('M d, Y', strtotime($docsByType['national_id_back']['created_at'])); ?>
+                                </p>
+                            <?php else: ?>
+                                <p class="text-sm text-gray-500 mb-4">Not uploaded yet</p>
+                                <a href="/auth/become-vendor.php" class="inline-block px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition shadow-sm shadow-indigo-200">
+                                    <i class="fas fa-upload mr-1"></i> Upload Now
+                                </a>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- PAN/VAT Certificate -->
+                        <div class="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center transition-colors <?php echo isset($docsByType['pan_vat_document']) ? 'bg-green-50/50 border-green-200' : 'bg-gray-50 hover:bg-gray-100'; ?>">
+                            <div class="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-file-invoice text-3xl <?php echo isset($docsByType['pan_vat_document']) ? 'text-green-500' : 'text-gray-400'; ?>"></i>
+                            </div>
+                            <h4 class="text-lg font-bold text-gray-900 mb-2">PAN/VAT Certificate</h4>
+
+                            <?php if (isset($docsByType['pan_vat_document'])): ?>
+                                <div class="flex items-center justify-center gap-2 mb-4">
+                                    <i class="fas fa-check-circle text-green-500"></i>
+                                    <span class="text-sm text-green-700 font-bold">Uploaded</span>
+                                </div>
+                                <div class="flex justify-center gap-2">
+                                    <button type="button" onclick="previewDocument('<?php echo htmlspecialchars($docsByType['pan_vat_document']['document_url']); ?>', 'PAN/VAT Certificate')"
+                                            class="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-50 transition shadow-sm">
+                                        <i class="fas fa-eye mr-1"></i> View
+                                    </button>
+                                    <a href="<?php echo htmlspecialchars($docsByType['pan_vat_document']['document_url']); ?>" download
+                                       class="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-50 transition shadow-sm">
+                                        <i class="fas fa-download mr-1"></i>
+                                    </a>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-4">
+                                    Uploaded: <?php echo date('M d, Y', strtotime($docsByType['pan_vat_document']['created_at'])); ?>
+                                </p>
+                            <?php else: ?>
+                                <p class="text-sm text-gray-500 mb-4">Not uploaded yet</p>
+                                <a href="/auth/become-vendor.php" class="inline-block px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition shadow-sm shadow-indigo-200">
+                                    <i class="fas fa-upload mr-1"></i> Upload Now
+                                </a>
+                            <?php endif; ?>
+                        </div>
+
+                        <!-- Business Registration -->
+                        <div class="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center transition-colors <?php echo isset($docsByType['business_registration']) ? 'bg-green-50/50 border-green-200' : 'bg-gray-50 hover:bg-gray-100'; ?>">
+                            <div class="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center mx-auto mb-4">
+                                <i class="fas fa-building text-3xl <?php echo isset($docsByType['business_registration']) ? 'text-green-500' : 'text-gray-400'; ?>"></i>
+                            </div>
+                            <h4 class="text-lg font-bold text-gray-900 mb-2">Business Registration</h4>
+
+                            <?php if (isset($docsByType['business_registration'])): ?>
+                                <div class="flex items-center justify-center gap-2 mb-4">
+                                    <i class="fas fa-check-circle text-green-500"></i>
+                                    <span class="text-sm text-green-700 font-bold">Uploaded</span>
+                                </div>
+                                <div class="flex justify-center gap-2">
+                                    <button type="button" onclick="previewDocument('<?php echo htmlspecialchars($docsByType['business_registration']['document_url']); ?>', 'Business Registration')"
+                                            class="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-50 transition shadow-sm">
+                                        <i class="fas fa-eye mr-1"></i> View
+                                    </button>
+                                    <a href="<?php echo htmlspecialchars($docsByType['business_registration']['document_url']); ?>" download
+                                       class="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-sm font-bold hover:bg-gray-50 transition shadow-sm">
+                                        <i class="fas fa-download mr-1"></i>
+                                    </a>
+                                </div>
+                                <p class="text-xs text-gray-400 mt-4">
+                                    Uploaded: <?php echo date('M d, Y', strtotime($docsByType['business_registration']['created_at'])); ?>
+                                </p>
+                            <?php else: ?>
+                                <p class="text-sm text-gray-500 mb-4">Not uploaded yet</p>
+                                <a href="/auth/become-vendor.php" class="inline-block px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:bg-indigo-700 transition shadow-sm shadow-indigo-200">
+                                    <i class="fas fa-upload mr-1"></i> Upload Now
+                                </a>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <!-- Document Preview Modal -->
-<div id="previewModal" class="hidden fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-auto flex flex-col">
-        <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center z-10">
-            <h3 id="previewTitle" class="text-xl font-bold text-gray-900"></h3>
-            <button type="button" onclick="closePreview()" class="text-gray-600 hover:text-gray-900 text-2xl">
+<div id="previewModal" class="hidden fixed inset-0 bg-black/80 z-[60] flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-fade-in-up">
+        <div class="bg-white border-b border-gray-100 px-6 py-4 flex justify-between items-center z-10">
+            <h3 id="previewTitle" class="text-lg font-bold text-gray-900">Document Preview</h3>
+            <button type="button" onclick="closePreview()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-900 transition-colors">
                 <i class="fas fa-times"></i>
             </button>
         </div>
-        <div class="flex-1 overflow-auto p-6 bg-white flex items-center justify-center">
-            <div id="previewContainer" class="text-center max-w-full"></div>
+        <div class="flex-1 overflow-auto p-8 bg-gray-50 flex items-center justify-center">
+            <div id="previewContainer" class="text-center w-full h-full flex items-center justify-center"></div>
         </div>
-        <div class="border-t bg-gray-50 px-6 py-4 flex justify-between items-center gap-3">
-            <a id="downloadBtn" href="#" download class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition">
-                <i class="fas fa-download"></i> Download
-            </a>
-            <button type="button" onclick="closePreview()" class="bg-gray-300 hover:bg-gray-400 text-gray-900 px-4 py-2 rounded-lg font-medium transition">
+        <div class="border-t border-gray-100 bg-white px-6 py-4 flex justify-end items-center gap-3">
+            <button type="button" onclick="closePreview()" class="px-5 py-2.5 rounded-xl border border-gray-200 text-gray-700 font-bold hover:bg-gray-50 transition">
                 Close
             </button>
+            <a id="downloadBtn" href="#" download class="px-5 py-2.5 rounded-xl bg-primary text-white font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200 flex items-center gap-2">
+                <i class="fas fa-download"></i> Download
+            </a>
         </div>
     </div>
 </div>
@@ -250,29 +300,39 @@ function previewDocument(url, title) {
     const container = document.getElementById('previewContainer');
     const previewTitle = document.getElementById('previewTitle');
     const downloadBtn = document.getElementById('downloadBtn');
-    
+    const modal = document.getElementById('previewModal');
+
     previewTitle.textContent = title;
     downloadBtn.href = url;
     downloadBtn.download = title.replace(/\s+/g, '_') + (url.includes('.pdf') ? '.pdf' : '.jpg');
-    
+
     // Determine file type and display accordingly
     if (url.toLowerCase().endsWith('.pdf')) {
-        container.innerHTML = '<embed src="' + url + '" type="application/pdf" width="100%" height="600px" style="background:white;" />';
+        container.innerHTML = '<embed src="' + url + '" type="application/pdf" width="100%" height="100%" style="min-height: 500px; border-radius: 8px;" />';
     } else {
         // Image display with proper sizing
-        container.innerHTML = '<img src="' + url + '" alt="' + title + '" style="max-width: 100%; max-height: 600px; object-fit: contain; border-radius: 8px; background: white;" />';
+        container.innerHTML = '<img src="' + url + '" alt="' + title + '" style="max-width: 100%; max-height: 600px; object-fit: contain; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);" />';
     }
-    
-    document.getElementById('previewModal').classList.remove('hidden');
+
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
 }
 
 function closePreview() {
     document.getElementById('previewModal').classList.add('hidden');
+    document.body.style.overflow = ''; // Restore scrolling
 }
 
 // Close modal on Escape key
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
+        closePreview();
+    }
+});
+
+// Close modal when clicking outside
+document.getElementById('previewModal').addEventListener('click', function(e) {
+    if (e.target === this) {
         closePreview();
     }
 });

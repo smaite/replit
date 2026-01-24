@@ -154,7 +154,7 @@
 
                     <!-- Location -->
                     <?php
-                    $delivery_location = 'Kathmandu';
+                    $delivery_location = getUserLocation();
                     if (isLoggedIn()) {
                         try {
                             $stmt = $conn->prepare("SELECT city FROM user_addresses WHERE user_id = ? ORDER BY is_default DESC LIMIT 1");

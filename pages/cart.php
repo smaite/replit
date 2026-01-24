@@ -12,7 +12,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $conn->prepare("DELETE FROM cart WHERE id = ?");
         $stmt->execute([$_POST['cart_id']]);
     } elseif ($action === 'update' && isset($_POST['cart_id'], $_POST['quantity'])) {
-        $qty = max 1, intval($_POST['quantity']); // Ensure at least 1
+        $qty = max(1, intval($_POST['quantity'])); // Ensure at least 1
         $stmt = $conn->prepare("UPDATE cart SET quantity = ? WHERE id = ?");
         $stmt->execute([$qty, $_POST['cart_id']]);
     }

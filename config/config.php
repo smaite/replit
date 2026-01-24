@@ -128,6 +128,42 @@ function validateInput($data, $type = 'text', $maxLength = 255)
     }
 }
 
+function getUserIp() {
+    if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+        return $_SERVER['HTTP_CLIENT_IP'];
+    } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+        return explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
+    } else {
+        return $_SERVER['REMOTE_ADDR'];
+    }
+}
+
+function getUserLocation() {
+    if (isset($_SESSION['detected_city'])) {
+        return $_SESSION['detected_city'];
+    }
+
+    $ip = getUserIp();
+    // Handle localhost
+    if ($ip === '127.0.0.1' || $ip === '::1') {
+        return 'Kathmandu';
+    }
+
+    try {
+        $json = file_get_contents("http://ip-api.com/json/{$ip}?fields=status,city");
+        $data = json_decode($json, true);
+
+        if ($data && $data['status'] === 'success') {
+            $_SESSION['detected_city'] = $data['city'];
+            return $data['city'];
+        }
+    } catch (Exception $e) {
+        // Fail silently
+    }
+
+    return 'Kathmandu';
+}
+
 // Website Settings Management - Load from Database
 function getWebsiteSettings()
 {

@@ -229,7 +229,30 @@ include '../includes/header.php';
                     </div>
                 </div>
 
-                <?php if ($product['stock'] > 0): ?>
+                <?php 
+                // Check if current user is the vendor of this product
+                $is_own_product = false;
+                if (isLoggedIn() && isVendor()) {
+                    $v_stmt = $conn->prepare("SELECT id FROM vendors WHERE user_id = ?");
+                    $v_stmt->execute([$_SESSION['user_id']]);
+                    $current_vendor = $v_stmt->fetch();
+                    if ($current_vendor && $current_vendor['id'] == $product['vendor_id']) {
+                        $is_own_product = true;
+                    }
+                }
+                ?>
+
+                <?php if ($is_own_product): ?>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                        <p class="text-blue-800 font-medium mb-3">
+                            <i class="fas fa-info-circle mr-2"></i> This is your product
+                        </p>
+                        <a href="/seller/edit-product.php?id=<?php echo $product['id']; ?>" 
+                           class="block w-full bg-primary hover:bg-indigo-700 text-white text-center py-3 rounded-lg font-bold transition shadow-sm">
+                            <i class="fas fa-edit mr-2"></i> Edit Product
+                        </a>
+                    </div>
+                <?php elseif ($product['stock'] > 0): ?>
                     <div class="mb-6">
                         <label class="block text-sm font-medium text-gray-700 mb-2">Quantity</label>
                         <div class="flex items-center border border-gray-300 rounded w-max">

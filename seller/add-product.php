@@ -25,14 +25,18 @@ if ($vendor['status'] !== 'approved') {
     $page_title = 'Add Product - SASTO Hub';
     include '../includes/header.php';
 ?>
-    <div class="container mx-auto px-4 py-12">
-        <div class="max-w-md mx-auto bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-            <i class="fas fa-ban text-4xl text-red-600 mb-4"></i>
-            <h2 class="text-xl font-bold text-red-900 mb-2">Cannot Upload Products</h2>
-            <p class="text-red-700"><?php echo htmlspecialchars($error_msg); ?></p>
-            <a href="/seller/" class="inline-block mt-6 bg-primary text-white px-6 py-2 rounded-lg hover:bg-indigo-700">
-                Go to Dashboard
-            </a>
+    <div class="bg-gray-50 min-h-screen py-12">
+        <div class="container mx-auto px-4">
+            <div class="max-w-md mx-auto bg-white rounded-xl shadow-sm border border-red-100 p-8 text-center">
+                <div class="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-ban text-2xl text-red-500"></i>
+                </div>
+                <h2 class="text-xl font-bold text-gray-900 mb-2">Access Restricted</h2>
+                <p class="text-gray-600 mb-6"><?php echo htmlspecialchars($error_msg); ?></p>
+                <a href="/seller/" class="inline-flex items-center justify-center px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-indigo-700 transition transform hover:-translate-y-0.5">
+                    Go to Dashboard
+                </a>
+            </div>
         </div>
     </div>
 <?php
@@ -67,6 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verifyCsrfToken($_POST['csrf_token'] ?? '')) {
         $error = 'Security token invalid. Please try again.';
     } else {
+        // ... (Same validation logic as before) ...
         $name = sanitize($_POST['product_name'] ?? '');
         $description = sanitize($_POST['product_description'] ?? '');
         $category_ids = isset($_POST['category_ids']) && is_array($_POST['category_ids']) ? array_map('intval', $_POST['category_ids']) : [];
@@ -104,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         // Validate inputs
         if (empty($name) || empty($description) || $price <= 0 || empty($category_ids) || $stock < 0) {
-            $error = 'Please fill in all required fields correctly (including at least one category).';
+            $error = 'Please fill in all required fields correctly.';
         } elseif (empty($_FILES['product_images']['name'][0])) {
             $error = 'Please upload at least one product image.';
         } else {
@@ -113,7 +118,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (!is_dir($upload_dir)) {
                 mkdir($upload_dir, 0755, true);
             }
-                        try {
+
+            try {
                 $conn->beginTransaction();
 
                 // Generate slug
@@ -169,7 +175,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $product_id = $conn->lastInsertId();
 
                 // Insert categories
-
                 $cat_stmt = $conn->prepare("INSERT INTO product_categories (product_id, category_id) VALUES (?, ?)");
                 foreach ($category_ids as $cat_id) {
                     try {
@@ -239,284 +244,330 @@ $page_title = 'Add Product - SASTO Hub';
 include '../includes/header.php';
 ?>
 
-<div class="container mx-auto px-4 py-8">
-    <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-gray-800">Add New Product</h1>
-        <a href="/seller/" class="text-gray-600 hover:text-primary">
-            <i class="fas fa-arrow-left mr-2"></i>Back to Dashboard
-        </a>
+<div class="bg-gray-50 min-h-screen py-8">
+    <div class="container mx-auto px-4">
+        <!-- Breadcrumb -->
+        <nav class="flex mb-8 text-sm text-gray-500">
+            <a href="/" class="hover:text-primary">Home</a>
+            <span class="mx-2">/</span>
+            <a href="/seller/" class="hover:text-primary">Seller Dashboard</a>
+            <span class="mx-2">/</span>
+            <span class="text-gray-900 font-medium">Add Product</span>
+        </nav>
+
+        <div class="max-w-5xl mx-auto">
+            <div class="flex items-center justify-between mb-8">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">Add New Product</h1>
+                    <p class="text-gray-500 mt-1">Create a new listing for your store</p>
+                </div>
+                <a href="/seller/products.php" class="bg-white border border-gray-200 text-gray-700 px-6 py-2.5 rounded-xl font-bold hover:bg-gray-50 transition">
+                    Cancel
+                </a>
+            </div>
+
+            <?php if ($error): ?>
+                <div class="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl mb-6 flex items-center gap-3">
+                    <i class="fas fa-exclamation-circle text-xl"></i>
+                    <div><?php echo htmlspecialchars($error); ?></div>
+                </div>
+            <?php endif; ?>
+
+            <?php if ($success): ?>
+                <div class="bg-green-50 border border-green-200 text-green-700 px-6 py-4 rounded-xl mb-6 flex items-center gap-3">
+                    <i class="fas fa-check-circle text-xl"></i>
+                    <div>
+                        <p class="font-bold"><?php echo htmlspecialchars($success); ?></p>
+                        <p class="text-sm mt-1"><a href="/seller/products.php" class="underline">View all products</a> or add another one below.</p>
+                    </div>
+                </div>
+            <?php endif; ?>
+
+            <form action="" method="POST" enctype="multipart/form-data" class="space-y-8">
+                <input type="hidden" name="csrf_token" value="<?php echo generateCsrfToken(); ?>">
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Left Column: Main Info -->
+                    <div class="lg:col-span-2 space-y-8">
+                        <!-- Basic Information -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                <i class="fas fa-info-circle text-primary"></i> Basic Information
+                            </h2>
+
+                            <div class="space-y-6">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">Product Title <span class="text-red-500">*</span></label>
+                                    <input type="text" name="product_name" required
+                                           class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                                           placeholder="e.g. Premium Cotton T-Shirt"
+                                           value="<?php echo htmlspecialchars($_POST['product_name'] ?? ''); ?>">
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">Description <span class="text-red-500">*</span></label>
+                                    <textarea name="product_description" rows="6" required
+                                              class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                                              placeholder="Detailed product description..."><?php echo htmlspecialchars($_POST['product_description'] ?? ''); ?></textarea>
+                                </div>
+
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label class="block text-sm font-bold text-gray-700 mb-2">Brand</label>
+                                        <div class="relative">
+                                            <select name="brand_id" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary appearance-none cursor-pointer">
+                                                <option value="">No Brand / Generic</option>
+                                                <?php foreach ($brands as $brand): ?>
+                                                    <option value="<?php echo $brand['id']; ?>"><?php echo htmlspecialchars($brand['name']); ?></option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                            <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
+                                                <i class="fas fa-chevron-down text-xs"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-sm font-bold text-gray-700 mb-2">Condition <span class="text-red-500">*</span></label>
+                                        <div class="relative">
+                                            <select name="condition" required class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary appearance-none cursor-pointer">
+                                                <option value="new">New</option>
+                                                <option value="used">Used</option>
+                                            </select>
+                                            <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
+                                                <i class="fas fa-chevron-down text-xs"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Media -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                <i class="fas fa-images text-primary"></i> Media
+                            </h2>
+
+                            <div class="space-y-6">
+                                <div class="p-8 border-2 border-dashed border-gray-300 rounded-xl hover:border-primary/50 transition-colors bg-gray-50/50 text-center">
+                                    <div class="mb-4">
+                                        <i class="fas fa-cloud-upload-alt text-4xl text-gray-300"></i>
+                                    </div>
+                                    <label class="block">
+                                        <span class="bg-primary text-white px-4 py-2 rounded-lg cursor-pointer hover:bg-indigo-700 transition font-bold text-sm">Choose Files</span>
+                                        <input type="file" name="product_images[]" multiple accept="image/*" required class="hidden" onchange="previewImages(this)">
+                                    </label>
+                                    <p class="text-xs text-gray-500 mt-2">Upload up to 5 images. JPG, PNG, WebP allowed.</p>
+                                </div>
+                                <div id="image-preview" class="grid grid-cols-5 gap-4"></div>
+
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">Video URL (Optional)</label>
+                                    <input type="url" name="video_url" placeholder="https://youtube.com/..."
+                                           class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                                           value="<?php echo htmlspecialchars($_POST['video_url'] ?? ''); ?>">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Inventory & Variants -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <h2 class="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                                <i class="fas fa-boxes text-primary"></i> Inventory
+                            </h2>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">SKU</label>
+                                    <input type="text" name="sku"
+                                           class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                                           value="<?php echo htmlspecialchars($_POST['sku'] ?? ''); ?>">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">Total Stock <span class="text-red-500">*</span></label>
+                                    <input type="number" name="stock" min="0" required
+                                           class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                                           value="<?php echo htmlspecialchars($_POST['stock'] ?? ''); ?>">
+                                </div>
+                            </div>
+
+                            <div class="border-t border-gray-100 pt-6">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="font-bold text-gray-900">Variants (Optional)</h3>
+                                    <button type="button" onclick="addVariantRow()" class="text-primary hover:text-indigo-700 font-bold text-sm">
+                                        <i class="fas fa-plus mr-1"></i> Add Variant
+                                    </button>
+                                </div>
+                                <div id="variants-container" class="space-y-3">
+                                    <!-- Variant rows added via JS -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column: Sidebar Settings -->
+                    <div class="space-y-8">
+                        <!-- Pricing -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <h2 class="text-xl font-bold text-gray-900 mb-6">Pricing</h2>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">Regular Price <span class="text-red-500">*</span></label>
+                                    <div class="relative">
+                                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-500">Rs.</span>
+                                        <input type="number" name="price" step="0.01" min="0" required
+                                               class="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors font-bold text-gray-900"
+                                               value="<?php echo htmlspecialchars($_POST['price'] ?? ''); ?>">
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">Sale Price</label>
+                                    <div class="relative">
+                                        <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-500">Rs.</span>
+                                        <input type="number" name="sale_price" step="0.01" min="0"
+                                               class="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                                               value="<?php echo htmlspecialchars($_POST['sale_price'] ?? ''); ?>">
+                                    </div>
+                                </div>
+
+                                <div class="pt-2">
+                                    <label class="flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" name="flash_sale_eligible" value="1" class="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary">
+                                        <span class="text-sm font-medium text-gray-700">Eligible for Flash Sales</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Organization -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <h2 class="text-xl font-bold text-gray-900 mb-6">Organization</h2>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">Category <span class="text-red-500">*</span></label>
+                                    <select name="category_ids[]" required multiple class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary appearance-none h-40">
+                                        <?php foreach ($categories as $category): ?>
+                                            <option value="<?php echo $category['id']; ?>"><?php echo htmlspecialchars($category['name']); ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                    <p class="text-xs text-gray-500 mt-2">Hold Ctrl/Cmd to select multiple</p>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">Tags</label>
+                                    <input type="text" name="tags" placeholder="comma, separated, tags"
+                                           class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                                           value="<?php echo htmlspecialchars($_POST['tags'] ?? ''); ?>">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Shipping -->
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                            <h2 class="text-xl font-bold text-gray-900 mb-6">Shipping</h2>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">Weight (kg)</label>
+                                    <input type="number" name="shipping_weight" step="0.01" min="0"
+                                           class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
+                                           value="<?php echo htmlspecialchars($_POST['shipping_weight'] ?? ''); ?>">
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-bold text-gray-700 mb-2">Shipping Profile</label>
+                                    <div class="relative">
+                                        <select name="shipping_profile_id" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-primary appearance-none cursor-pointer">
+                                            <option value="">Default Profile</option>
+                                            <?php foreach ($shipping_profiles as $profile): ?>
+                                                <option value="<?php echo $profile['id']; ?>"><?php echo htmlspecialchars($profile['name']); ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
+                                            <i class="fas fa-chevron-down text-xs"></i>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="pt-2">
+                                    <label class="flex items-center gap-3 cursor-pointer">
+                                        <input type="checkbox" name="free_shipping" value="1" class="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary">
+                                        <span class="text-sm font-medium text-gray-700">Free Shipping</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Bar -->
+                <div class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg z-50">
+                    <div class="container mx-auto max-w-5xl flex justify-between items-center">
+                        <p class="text-sm text-gray-500 hidden sm:block">Unsaved changes</p>
+                        <div class="flex gap-4">
+                            <a href="/seller/products.php" class="px-6 py-3 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl hover:bg-gray-50 transition">
+                                Discard
+                            </a>
+                            <button type="submit" class="px-8 py-3 bg-primary hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 transition transform hover:-translate-y-0.5">
+                                Publish Product
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="h-16"></div> <!-- Spacer for fixed footer -->
+            </form>
+        </div>
     </div>
-
-    <?php if ($error): ?>
-        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-6" role="alert">
-            <span class="block sm:inline"><?php echo htmlspecialchars($error); ?></span>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($success): ?>
-        <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-6" role="alert">
-            <span class="block sm:inline"><?php echo htmlspecialchars($success); ?></span>
-            <p class="mt-2"><a href="/seller/" class="font-bold underline">Return to Dashboard</a> or add another product below.</p>
-        </div>
-    <?php endif; ?>
-
-    <form action="" method="POST" enctype="multipart/form-data" class="bg-white rounded-lg shadow-md p-6">
-        <input type="hidden" name="csrf_token" value="<?php echo generateCsrfToken(); ?>">
-
-        <!-- Basic Information -->
-        <div class="mb-8">
-            <h2 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Basic Information</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="md:col-span-2">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="product_name">Product Title *</label>
-                    <input type="text" id="product_name" name="product_name" required
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        value="<?php echo htmlspecialchars($_POST['product_name'] ?? ''); ?>">
-                </div>
-
-                <div class="md:col-span-2">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="product_description">Description *</label>
-                    <textarea id="product_description" name="product_description" rows="5" required
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"><?php echo htmlspecialchars($_POST['product_description'] ?? ''); ?></textarea>
-                </div>
-
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="category_ids">Category *</label>
-                    <select id="category_ids" name="category_ids[]" required multiple
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline h-32">
-                        <?php foreach ($categories as $category): ?>
-                            <option value="<?php echo $category['id']; ?>"><?php echo htmlspecialchars($category['name']); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                    <p class="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple categories.</p>
-                </div>
-
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="brand_id">Brand</label>
-                    <select id="brand_id" name="brand_id"
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                        <option value="">No Brand / Generic</option>
-                        <?php foreach ($brands as $brand): ?>
-                            <option value="<?php echo $brand['id']; ?>"><?php echo htmlspecialchars($brand['name']); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="condition">Condition *</label>
-                    <select id="condition" name="condition" required
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                        <option value="new">New</option>
-                        <option value="used">Used</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="sku">SKU (Stock Keeping Unit)</label>
-                    <input type="text" id="sku" name="sku"
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        value="<?php echo htmlspecialchars($_POST['sku'] ?? ''); ?>">
-                </div>
-
-                <div class="md:col-span-2">
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="tags">Tags (comma separated)</label>
-                    <input type="text" id="tags" name="tags" placeholder="e.g. smartphone, electronics, sale"
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        value="<?php echo htmlspecialchars($_POST['tags'] ?? ''); ?>">
-                </div>
-            </div>
-        </div>
-
-        <!-- Pricing & Inventory -->
-        <div class="mb-8">
-            <h2 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Pricing & Inventory</h2>
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="price">Sell Price (Rs.) *</label>
-                    <input type="number" id="price" name="price" step="0.01" min="0" required
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        value="<?php echo htmlspecialchars($_POST['price'] ?? ''); ?>">
-                </div>
-
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="sale_price">Discount Price (Rs.)</label>
-                    <input type="number" id="sale_price" name="sale_price" step="0.01" min="0"
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        value="<?php echo htmlspecialchars($_POST['sale_price'] ?? ''); ?>">
-                </div>
-
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="stock">Stock Quantity *</label>
-                    <input type="number" id="stock" name="stock" min="0" required
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        value="<?php echo htmlspecialchars($_POST['stock'] ?? ''); ?>">
-                </div>
-
-                <div class="md:col-span-4">
-                    <label class="inline-flex items-center">
-                        <input type="checkbox" name="flash_sale_eligible" class="form-checkbox h-5 w-5 text-primary" value="1">
-                        <span class="ml-2 text-gray-700">Eligible for Flash Sales</span>
-                    </label>
-                </div>
-            </div>
-        </div>
-
-        <!-- Shipping & Delivery -->
-        <div class="mb-8">
-            <h2 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Shipping & Delivery</h2>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="shipping_weight">Weight (kg)</label>
-                    <input type="number" id="shipping_weight" name="shipping_weight" step="0.01" min="0"
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        value="<?php echo htmlspecialchars($_POST['shipping_weight'] ?? ''); ?>">
-                </div>
-
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="shipping_profile_id">Shipping Profile</label>
-                    <select id="shipping_profile_id" name="shipping_profile_id"
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                        <option value="">Default Shipping</option>
-                        <?php foreach ($shipping_profiles as $profile): ?>
-                            <option value="<?php echo $profile['id']; ?>"><?php echo htmlspecialchars($profile['name']); ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="handling_days">Handling Time (Days)</label>
-                    <input type="number" id="handling_days" name="handling_days" min="1" value="1"
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                </div>
-
-                <div class="md:col-span-3 grid grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Length (cm)</label>
-                        <input type="number" name="dimensions_length" step="0.1" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700">
-                    </div>
-                    <div>
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Width (cm)</label>
-                        <input type="number" name="dimensions_width" step="0.1" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700">
-                    </div>
-                    <div>
-                        <label class="block text-gray-700 text-sm font-bold mb-2">Height (cm)</label>
-                        <input type="number" name="dimensions_height" step="0.1" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700">
-                    </div>
-                </div>
-
-                <div class="md:col-span-3">
-                    <label class="inline-flex items-center">
-                        <input type="checkbox" name="free_shipping" class="form-checkbox h-5 w-5 text-primary" value="1">
-                        <span class="ml-2 text-gray-700">Free Shipping</span>
-                    </label>
-                </div>
-            </div>
-        </div>
-
-        <!-- Media -->
-        <div class="mb-8">
-            <h2 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Product Media</h2>
-            <div class="grid grid-cols-1 gap-6">
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="product_images">Product Images (Max 5) *</label>
-                    <input type="file" id="product_images" name="product_images[]" multiple accept="image/*" required
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                    <p class="text-xs text-gray-500 mt-1">First image will be the main image. Supported: JPG, PNG, WebP. Max 5MB each.</p>
-                </div>
-
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="video_url">Product Video URL (YouTube/Vimeo)</label>
-                    <input type="url" id="video_url" name="video_url" placeholder="https://..."
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        value="<?php echo htmlspecialchars($_POST['video_url'] ?? ''); ?>">
-                </div>
-            </div>
-        </div>
-
-        <!-- Variants -->
-        <div class="mb-8">
-            <h2 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Product Variants (Optional)</h2>
-            <div id="variants-container">
-                <!-- Variant rows will be added here -->
-            </div>
-            <button type="button" onclick="addVariantRow()" class="mt-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded inline-flex items-center">
-                <i class="fas fa-plus mr-2"></i> Add Variant
-            </button>
-        </div>
-
-        <!-- Other -->
-        <div class="mb-8">
-            <h2 class="text-lg font-semibold text-gray-700 border-b pb-2 mb-4">Additional Details</h2>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="return_policy_id">Return Policy</label>
-                    <select id="return_policy_id" name="return_policy_id"
-                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
-                        <option value="">Default Policy</option>
-                        <?php foreach ($return_policies as $policy): ?>
-                            <option value="<?php echo $policy['id']; ?>"><?php echo htmlspecialchars($policy['name']); ?> (<?php echo $policy['days']; ?> days)</option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2">Bullet Points (Highlights)</label>
-                    <div id="bullet-points-container">
-                        <input type="text" name="bullet_points[]" placeholder="Feature highlight 1" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-2">
-                        <input type="text" name="bullet_points[]" placeholder="Feature highlight 2" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-2">
-                        <input type="text" name="bullet_points[]" placeholder="Feature highlight 3" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-2">
-                    </div>
-                </div>
-
-                <div class="md:col-span-2">
-                    <label class="inline-flex items-center">
-                        <input type="checkbox" name="is_featured" class="form-checkbox h-5 w-5 text-primary" value="1">
-                        <span class="ml-2 text-gray-700">Request to be Featured Product</span>
-                    </label>
-                </div>
-            </div>
-        </div>
-
-        <div class="flex items-center justify-end">
-            <button type="submit" class="bg-primary hover:bg-indigo-700 text-white font-bold py-3 px-8 rounded focus:outline-none focus:shadow-outline">
-                Upload Product
-            </button>
-        </div>
-    </form>
 </div>
 
 <script>
     function addVariantRow() {
         const container = document.getElementById('variants-container');
-        const index = container.children.length;
         const html = `
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4 p-4 border rounded bg-gray-50 relative">
-            <button type="button" onclick="this.parentElement.remove()" class="absolute top-2 right-2 text-red-500 hover:text-red-700">
-                <i class="fas fa-times"></i>
+        <div class="flex gap-3 items-start p-3 bg-gray-50 rounded-lg border border-gray-200 relative group">
+            <div class="flex-1">
+                <input type="text" name="variants_sku[]" placeholder="SKU" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm">
+            </div>
+            <div class="flex-1">
+                <input type="text" name="variants_color[]" placeholder="Color" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm">
+            </div>
+            <div class="flex-1">
+                <input type="text" name="variants_size[]" placeholder="Size" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm">
+            </div>
+            <div class="w-24">
+                <input type="number" name="variants_price[]" placeholder="Price" step="0.01" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm">
+            </div>
+            <div class="w-24">
+                <input type="number" name="variants_stock[]" placeholder="Stock" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm">
+            </div>
+            <button type="button" onclick="this.parentElement.remove()" class="text-gray-400 hover:text-red-500 p-2">
+                <i class="fas fa-trash-alt"></i>
             </button>
-            <div>
-                <label class="block text-xs font-bold text-gray-600 mb-1">SKU</label>
-                <input type="text" name="variants_sku[]" required class="shadow appearance-none border rounded w-full py-1 px-2 text-sm">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-gray-600 mb-1">Color</label>
-                <input type="text" name="variants_color[]" class="shadow appearance-none border rounded w-full py-1 px-2 text-sm">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-gray-600 mb-1">Size</label>
-                <input type="text" name="variants_size[]" class="shadow appearance-none border rounded w-full py-1 px-2 text-sm">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-gray-600 mb-1">Price</label>
-                <input type="number" name="variants_price[]" step="0.01" class="shadow appearance-none border rounded w-full py-1 px-2 text-sm">
-            </div>
-            <div>
-                <label class="block text-xs font-bold text-gray-600 mb-1">Stock</label>
-                <input type="number" name="variants_stock[]" class="shadow appearance-none border rounded w-full py-1 px-2 text-sm">
-            </div>
         </div>
     `;
         container.insertAdjacentHTML('beforeend', html);
+    }
+
+    function previewImages(input) {
+        const preview = document.getElementById('image-preview');
+        preview.innerHTML = '';
+
+        if (input.files) {
+            Array.from(input.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const div = document.createElement('div');
+                    div.className = 'relative aspect-square rounded-lg overflow-hidden border border-gray-200';
+                    div.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+                    preview.appendChild(div);
+                }
+                reader.readAsDataURL(file);
+            });
+        }
     }
 </script>
 
