@@ -46,7 +46,20 @@ try {
             FOREIGN KEY (review_id) REFERENCES reviews(id) ON DELETE CASCADE
         )
     ");
-    
+
+    // Add rating columns to products table if not exists
+    try {
+        $conn->exec("ALTER TABLE products ADD COLUMN rating DECIMAL(3,2) DEFAULT 0.00");
+    } catch (PDOException $e) {
+        // Ignore if column already exists
+    }
+
+    try {
+        $conn->exec("ALTER TABLE products ADD COLUMN rating_count INT DEFAULT 0");
+    } catch (PDOException $e) {
+        // Ignore if column already exists
+    }
+
     switch ($method) {
         case 'GET':
             // Get reviews for a product
@@ -97,7 +110,10 @@ try {
             break;
             
         case 'POST':
-            // Add a review (requires auth)
+            // Add or Update a review (requires auth)
+            // DEBUG: Log received files
+            file_put_contents('debug_upload.txt', "FILES:\n" . print_r($_FILES, true) . "\nPOST:\n" . print_r($_POST, true));
+
             $user = getAuthUser();
             if (!$user) {
                 http_response_code(401);
@@ -105,28 +121,81 @@ try {
                 exit;
             }
             $user_id = $user['id'];
-            
+
             // Handle multipart form data for image uploads
             $product_id = (int)($_POST['product_id'] ?? 0);
             $rating = (int)($_POST['rating'] ?? 0);
             $comment = trim($_POST['comment'] ?? '');
-            
-            if (!$product_id || $rating < 1 || $rating > 5) {
-                http_response_code(400);
-                echo json_encode(['success' => false, 'error' => 'Product ID and valid rating (1-5) required']);
-                exit;
+            $review_id = (int)($_POST['review_id'] ?? 0); // Check if updating
+
+            if ($review_id) {
+                // UPDATE MODE
+                if ($rating < 1 || $rating > 5) {
+                    http_response_code(400);
+                    echo json_encode(['success' => false, 'error' => 'Valid rating (1-5) required']);
+                    exit;
+                }
+
+                // Verify ownership
+                $stmt = $conn->prepare("SELECT product_id FROM reviews WHERE id = ? AND user_id = ?");
+                $stmt->execute([$review_id, $user_id]);
+                $review = $stmt->fetch();
+
+                if (!$review) {
+                    http_response_code(403);
+                    echo json_encode(['success' => false, 'error' => 'Review not found or permission denied']);
+                    exit;
+                }
+
+                $product_id = $review['product_id']; // Ensure we use the correct product_id
+
+                // Update review text
+                $stmt = $conn->prepare("UPDATE reviews SET rating = ?, comment = ? WHERE id = ?");
+                $stmt->execute([$rating, $comment, $review_id]);
+
+                // Handle deleted images
+                if (!empty($_POST['deleted_images'])) {
+                    $deleted_paths = json_decode($_POST['deleted_images'], true);
+                    if (is_array($deleted_paths)) {
+                        foreach ($deleted_paths as $path) {
+                            $stmt = $conn->prepare("DELETE FROM review_images WHERE review_id = ? AND image_path = ?");
+                            $stmt->execute([$review_id, $path]);
+                            // Optional: unlink(__DIR__ . '/..' . $path);
+                        }
+                    }
+                }
+
+                $message = 'Review updated successfully';
+
+            } else {
+                // CREATE MODE
+                if (!$product_id || $rating < 1 || $rating > 5) {
+                    http_response_code(400);
+                    echo json_encode(['success' => false, 'error' => 'Product ID and valid rating (1-5) required']);
+                    exit;
+                }
+
+                // Check if user already reviewed this product
+                $stmt = $conn->prepare("SELECT id FROM reviews WHERE product_id = ? AND user_id = ?");
+                $stmt->execute([$product_id, $user_id]);
+                if ($stmt->fetch()) {
+                    http_response_code(400);
+                    echo json_encode(['success' => false, 'error' => 'You have already reviewed this product']);
+                    exit;
+                }
+
+                // Insert review
+                $stmt = $conn->prepare("
+                    INSERT INTO reviews (product_id, user_id, rating, comment)
+                    VALUES (?, ?, ?, ?)
+                ");
+                $stmt->execute([$product_id, $user_id, $rating, $comment]);
+                $review_id = $conn->lastInsertId();
+
+                $message = 'Review submitted successfully';
             }
-            
-            // Check if user already reviewed this product
-            $stmt = $conn->prepare("SELECT id FROM reviews WHERE product_id = ? AND user_id = ?");
-            $stmt->execute([$product_id, $user_id]);
-            if ($stmt->fetch()) {
-                http_response_code(400);
-                echo json_encode(['success' => false, 'error' => 'You have already reviewed this product']);
-                exit;
-            }
-            
-            // Check if user has purchased this product
+
+            // Check purchase status (for response only)
             $stmt = $conn->prepare("
                 SELECT oi.id FROM order_items oi
                 JOIN orders o ON oi.order_id = o.id
@@ -135,57 +204,117 @@ try {
             ");
             $stmt->execute([$user_id, $product_id]);
             $has_purchased = $stmt->fetch();
-            
-            // Insert review
-            $stmt = $conn->prepare("
-                INSERT INTO reviews (product_id, user_id, rating, comment) 
-                VALUES (?, ?, ?, ?)
-            ");
-            $stmt->execute([$product_id, $user_id, $rating, $comment]);
-            $review_id = $conn->lastInsertId();
-            
-            // Handle image uploads
+
+            // Handle image uploads (Common for Create & Update)
             $uploaded_images = [];
             if (!empty($_FILES['images']['name'][0])) {
-                $upload_dir = '../uploads/reviews/';
+                // Use absolute path relative to this file
+                $upload_dir = __DIR__ . '/../uploads/reviews/';
                 if (!is_dir($upload_dir)) {
                     mkdir($upload_dir, 0755, true);
                 }
-                
+
                 foreach ($_FILES['images']['tmp_name'] as $key => $tmp_name) {
                     if ($_FILES['images']['error'][$key] === UPLOAD_ERR_OK) {
                         $file_type = $_FILES['images']['type'][$key];
-                        if (in_array($file_type, ['image/jpeg', 'image/png', 'image/webp'])) {
-                            $filename = 'review_' . $review_id . '_' . uniqid() . '.' . pathinfo($_FILES['images']['name'][$key], PATHINFO_EXTENSION);
-                            if (move_uploaded_file($tmp_name, $upload_dir . $filename)) {
+                        // Expanded allowed types
+                        $allowed_types = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg', 'image/gif'];
+
+                        if (in_array($file_type, $allowed_types)) {
+                            $ext = pathinfo($_FILES['images']['name'][$key], PATHINFO_EXTENSION);
+                            $filename = 'review_' . $review_id . '_' . uniqid() . '.' . $ext;
+                            $target_file = $upload_dir . $filename;
+
+                            if (move_uploaded_file($tmp_name, $target_file)) {
                                 $image_path = '/uploads/reviews/' . $filename;
-                                $stmt = $conn->prepare("INSERT INTO review_images (review_id, image_path) VALUES (?, ?)");
-                                $stmt->execute([$review_id, $image_path]);
-                                $uploaded_images[] = $image_path;
+                                try {
+                                    $stmt = $conn->prepare("INSERT INTO review_images (review_id, image_path) VALUES (?, ?)");
+                                    $stmt->execute([$review_id, $image_path]);
+                                    $uploaded_images[] = $image_path;
+                                } catch (Exception $e) {
+                                    error_log("DB Insert Error: " . $e->getMessage());
+                                }
+                            } else {
+                                error_log("Move Upload Failed: $tmp_name to $target_file");
                             }
+                        } else {
+                             error_log("Invalid file type: " . $file_type);
                         }
+                    } else {
+                        error_log("Upload error code: " . $_FILES['images']['error'][$key]);
                     }
                 }
             }
-            
-            // Update product average rating
+
+            // Update product average rating (Common)
             $stmt = $conn->prepare("
-                UPDATE products SET 
+                UPDATE products SET
                     rating = (SELECT AVG(rating) FROM reviews WHERE product_id = ? AND status = 'approved'),
                     rating_count = (SELECT COUNT(*) FROM reviews WHERE product_id = ? AND status = 'approved')
                 WHERE id = ?
             ");
             $stmt->execute([$product_id, $product_id, $product_id]);
-            
+
             echo json_encode([
                 'success' => true,
-                'message' => 'Review submitted successfully',
+                'message' => $message,
                 'review_id' => $review_id,
                 'images' => $uploaded_images,
                 'verified_purchase' => (bool)$has_purchased
             ]);
             break;
-            
+
+        /* PUT is now handled via POST with review_id */
+        /*
+        case 'PUT':
+            // ... (removed)
+            break;
+        */
+
+        case 'DELETE':
+            // Delete a review
+            $user = getAuthUser();
+            if (!$user) {
+                http_response_code(401);
+                echo json_encode(['success' => false, 'error' => 'Authentication required']);
+                exit;
+            }
+
+            $review_id = (int)($_GET['id'] ?? 0);
+
+            // Verify ownership
+            $stmt = $conn->prepare("SELECT product_id FROM reviews WHERE id = ? AND user_id = ?");
+            $stmt->execute([$review_id, $user['id']]);
+            $review = $stmt->fetch();
+
+            if (!$review) {
+                http_response_code(403);
+                echo json_encode(['success' => false, 'error' => 'Review not found or permission denied']);
+                exit;
+            }
+
+            // Delete images files (optional cleanup)
+            // $stmt = $conn->prepare("SELECT image_path FROM review_images WHERE review_id = ?");
+            // $stmt->execute([$review_id]);
+            // ... unlink files ...
+
+            // Delete review (cascade will handle DB images)
+            $stmt = $conn->prepare("DELETE FROM reviews WHERE id = ?");
+            $stmt->execute([$review_id]);
+
+            // Update product stats
+            $product_id = $review['product_id'];
+            $stmt = $conn->prepare("
+                UPDATE products SET
+                    rating = (SELECT AVG(rating) FROM reviews WHERE product_id = ? AND status = 'approved'),
+                    rating_count = (SELECT COUNT(*) FROM reviews WHERE product_id = ? AND status = 'approved')
+                WHERE id = ?
+            ");
+            $stmt->execute([$product_id, $product_id, $product_id]);
+
+            echo json_encode(['success' => true, 'message' => 'Review deleted successfully']);
+            break;
+
         default:
             http_response_code(405);
             echo json_encode(['success' => false, 'error' => 'Method not allowed']);

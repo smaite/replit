@@ -33,8 +33,10 @@ $stmt = $conn->query("SELECT DISTINCT v.id, v.shop_name, v.shop_logo
 $official_stores = $stmt->fetchAll();
 
 // 5. Fetch "Just For You" (Random Mix)
-$stmt = $conn->query("SELECT p.*, pi.image_path 
-                      FROM products p 
+$stmt = $conn->query("SELECT p.*, pi.image_path,
+                      (SELECT AVG(rating) FROM reviews r WHERE r.product_id = p.id AND r.status = 'approved') as avg_rating,
+                      (SELECT SUM(oi.quantity) FROM order_items oi JOIN orders o ON oi.order_id = o.id WHERE oi.product_id = p.id AND o.status != 'cancelled' AND o.payment_status = 'paid') as total_sold
+                      FROM products p
                       LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = true
                       WHERE p.status = 'active'
                       ORDER BY RAND() LIMIT 24");
@@ -234,16 +236,19 @@ require_once 'includes/header.php';
                                 <?php endif; ?>
                             </div>
                             
-                            <!-- Rating Placeholder -->
+                            <!-- Rating -->
                             <div class="flex items-center gap-1 text-xs text-gray-500">
                                 <div class="flex text-yellow-400">
-                                    <i class="fas fa-star"></i>
-                                    <i class="fas fa-star"></i>
-                                    <i class="fas fa-star"></i>
-                                    <i class="fas fa-star"></i>
-                                    <i class="fas fa-star-half-alt"></i>
+                                    <?php
+                                    $avg = round($product['avg_rating'] ?? 0, 1);
+                                    for($i=1; $i<=5; $i++):
+                                        if($i <= $avg) echo '<i class="fas fa-star"></i>';
+                                        elseif($i-0.5 <= $avg) echo '<i class="fas fa-star-half-alt"></i>';
+                                        else echo '<i class="far fa-star text-gray-300"></i>';
+                                    endfor;
+                                    ?>
                                 </div>
-                                <span>(24)</span>
+                                <span>(<?php echo $product['total_sold'] ?? 0; ?> sold)</span>
                             </div>
                         </div>
                     </a>

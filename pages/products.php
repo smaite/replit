@@ -55,8 +55,11 @@ $order_by = match($sort) {
     default => 'p.created_at DESC'
 };
 
-$sql = "SELECT p.*, pi.image_path, v.shop_name, c.name as category_name, c.slug as category_slug
-        FROM products p 
+$sql = "SELECT p.*, pi.image_path, v.shop_name, c.name as category_name, c.slug as category_slug,
+        (SELECT AVG(rating) FROM reviews r WHERE r.product_id = p.id AND r.status = 'approved') as avg_rating,
+        (SELECT COUNT(*) FROM reviews r WHERE r.product_id = p.id AND r.status = 'approved') as review_count,
+        (SELECT SUM(oi.quantity) FROM order_items oi JOIN orders o ON oi.order_id = o.id WHERE oi.product_id = p.id AND o.status != 'cancelled' AND o.payment_status = 'paid') as total_sold
+        FROM products p
         LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1
         LEFT JOIN vendors v ON p.vendor_id = v.id
         LEFT JOIN categories c ON p.category_id = c.id
@@ -436,14 +439,22 @@ include '../includes/header.php';
                                     </a>
                                     
                                     <div class="flex items-center mb-3">
-                                        <div class="rating-stars">
-                                            <i class="fas fa-star"></i>
-                                            <i class="fas fa-star"></i>
-                                            <i class="fas fa-star"></i>
-                                            <i class="fas fa-star"></i>
-                                            <i class="fas fa-star-half-alt"></i>
+                                        <div class="rating-stars flex text-yellow-400 text-xs">
+                                            <?php
+                                            $avg_rating = round($product['avg_rating'] ?? 0, 1);
+                                            $total_sold = $product['total_sold'] ?? 0;
+                                            for($i = 1; $i <= 5; $i++):
+                                            ?>
+                                                <?php if($i <= $avg_rating): ?>
+                                                    <i class="fas fa-star"></i>
+                                                <?php elseif($i - 0.5 <= $avg_rating): ?>
+                                                    <i class="fas fa-star-half-alt"></i>
+                                                <?php else: ?>
+                                                    <i class="far fa-star text-gray-300"></i>
+                                                <?php endif; ?>
+                                            <?php endfor; ?>
                                         </div>
-                                        <span class="rating-count">(<?php echo rand(10, 999); ?> orders)</span>
+                                        <span class="rating-count text-xs text-gray-500 ml-1">(<?php echo $total_sold; ?> orders)</span>
                                     </div>
                                     
                                     <div class="mb-3">

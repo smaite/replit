@@ -7,3 +7,5 @@ vendor/
 /.CLAUDE
 /php
 .txt
+uploads/reviews/
+api/debug_upload.txt
