@@ -214,7 +214,7 @@ require_once 'includes/header.php';
     <?php endif; ?>
 
     <!-- 5. Official Stores -->
-    <?php if (!empty($official_stores)): ?>
+    <!-- <?php if (!empty($official_stores)): ?>
     <div class="container mx-auto px-4 mb-8">
         <h2 class="text-xl font-bold text-gray-900 mb-4">Official Stores</h2>
         <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -232,7 +232,7 @@ require_once 'includes/header.php';
             <?php endforeach; ?>
         </div>
     </div>
-    <?php endif; ?>
+    <?php endif; ?> -->
 
     <!-- 6. Recommended Items (Just For You) -->
     <div class="container mx-auto px-4">
