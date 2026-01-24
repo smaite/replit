@@ -170,7 +170,7 @@
                         </div>
                         <div>
                             <span class="block text-[10px] text-gray-500 leading-tight">Delivering to</span>
-                            <span class="block text-xs font-bold text-gray-900 truncate max-w-[100px]"><?php echo htmlspecialchars($delivery_location); ?></span>
+                            <span class="block text-xs font-bold text-gray-900 truncate max-w-[100px]" data-location-display><?php echo htmlspecialchars($delivery_location); ?></span>
                         </div>
                     </a>
 
@@ -408,5 +408,43 @@
                 });
             });
         });
+
+        // Browser Geolocation - asks for permission and sends to API
+        (function() {
+            // Only request if we don't have a cached location or it's from IP
+            const hasGeoPermission = sessionStorage.getItem('geoRequested');
+            
+            if (!hasGeoPermission && navigator.geolocation) {
+                sessionStorage.setItem('geoRequested', 'true');
+                
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        // Success - send coordinates to API
+                        fetch('/api/geolocation.php', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                lat: position.coords.latitude,
+                                lng: position.coords.longitude
+                            })
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success && data.city) {
+                                // Update the location display without page reload
+                                const locSpan = document.querySelector('[data-location-display]');
+                                if (locSpan) locSpan.textContent = data.city;
+                                console.log('📍 Location updated to:', data.city);
+                            }
+                        })
+                        .catch(err => console.log('Geolocation API error:', err));
+                    },
+                    function(error) {
+                        console.log('Geolocation denied or unavailable:', error.message);
+                    },
+                    { timeout: 10000, maximumAge: 600000 }
+                );
+            }
+        })();
     </script>
     <main class="min-h-screen">

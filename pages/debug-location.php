@@ -31,6 +31,7 @@ try {
 
 // Get current session city
 $session_city = $_SESSION['detected_city'] ?? 'Not set';
+$geo_source = $_SESSION['geo_source'] ?? 'Not set';
 
 // Get current function result
 $function_result = getUserLocation();
