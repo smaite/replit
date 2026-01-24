@@ -9,7 +9,7 @@
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
     <title><?php echo $page_title ?? 'SASTO Hub - Shop from Multiple Vendors'; ?></title>
-    
+
     <!-- PWA Manifest & Meta Tags -->
     <link rel="manifest" href="/manifest.json">
     <link rel="icon" type="image/png" href="/assets/images/icon-192.png">
@@ -21,58 +21,35 @@
     <meta name="theme-color" content="#4F46E5">
     <meta name="msapplication-TileColor" content="#4F46E5">
     <meta name="msapplication-TileImage" content="/assets/images/icon-144.png">
-    
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/assets/css/style.css">
-    
+
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        primary: '#2196F3', // App Blue
+                        primary: '#4f46e5', // Indigo-600
                         secondary: '#F5841F', // App Orange
+                        dark: '#1e293b'
                     }
                 }
             }
         }
-        
+
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/service-worker.js').then(function(registration) {
                 console.log('Service Worker registered successfully:', registration);
             }).catch(function(error) {
                 console.log('Service Worker registration failed:', error);
             });
-        }
-        
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            const installBtn = document.getElementById('install-btn');
-            if (installBtn) {
-                installBtn.style.display = 'block';
-            }
-        });
-        
-        function installApp() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === 'accepted') {
-                        console.log('User accepted the install prompt');
-                    } else {
-                        console.log('User dismissed the install prompt');
-                    }
-                    deferredPrompt = null;
-                });
-            }
         }
     </script>
     <style>
@@ -87,16 +64,16 @@
             z-index: 40;
             box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
         }
-        
+
         @media (max-width: 768px) {
             .bottom-nav {
                 display: flex;
             }
-            
+
             body {
                 padding-bottom: 70px;
             }
-            
+
             .nav-item {
                 flex: 1;
                 display: flex;
@@ -110,141 +87,209 @@
                 border-radius: 0;
                 transition: all 0.3s ease;
             }
-            
+
             .nav-item:hover, .nav-item.active {
-                color: #2196F3;
+                color: #4f46e5;
                 background: #f3f4f6;
             }
-            
+
             .nav-item i {
                 font-size: 22px;
                 margin-bottom: 4px;
             }
-            
+
             .nav-item span {
                 display: block;
                 text-align: center;
             }
-            
-            .top-bar {
-                display: none;
-            }
-            
-            .main-nav {
-                padding: 12px 16px !important;
-            }
-            
-            .search-bar {
-                display: none;
-            }
-            
-            .logo {
-                font-size: 20px !important;
-            }
+        }
+
+        /* Custom Scrollbar for dropdowns */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 3px;
         }
     </style>
 </head>
 <?php $contact_phone = getSetting('contact_phone');?>
-<body class="bg-gray-50">
+<body class="bg-gray-50 font-sans text-gray-800">
+
+    <!-- Main Header -->
     <header class="bg-white shadow-sm sticky top-0 z-50">
-        <!-- Top Bar (Clean White/Gray Style) -->
-        <div class="top-bar bg-gray-50 border-b border-gray-200 text-gray-600 py-2">
-            <div class="container mx-auto px-4 flex justify-between items-center text-xs font-medium">
-                <div class="flex items-center gap-4">
-                            
-                    <a href="tel:<?php echo htmlspecialchars($contact_phone); ?>" class="hover:text-primary transition"><i class="fas fa-phone mr-1"></i><?php $contact_phone = getSetting('contact_phone'); echo htmlspecialchars($contact_phone); ?></a>
-                    <span class="hover:text-primary transition"><i class="fas fa-envelope mr-1"></i> info@sastohub.com</span>
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-20 gap-8">
+
+                <!-- Logo -->
+                <a href="/" class="flex-shrink-0 flex items-center gap-2">
+                    <span class="text-3xl font-bold text-gray-900 tracking-tight">sasto<span class="text-primary">hub</span></span>
+                    <div class="w-1.5 h-1.5 bg-primary rounded-full mt-3"></div>
+                    <div class="w-1.5 h-1.5 bg-secondary rounded-full mt-3"></div>
+                </a>
+
+                <!-- Search Bar -->
+                <div class="flex-1 max-w-3xl hidden md:block">
+                    <form action="/pages/search.php" method="GET" class="relative group">
+                        <div class="relative">
+                            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-primary">
+                                <i class="fas fa-sparkles"></i>
+                            </span>
+                            <input type="text" name="q" placeholder="Discover new products..."
+                                   class="w-full pl-10 pr-14 py-3 bg-gray-50 border border-gray-200 rounded-full focus:outline-none focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-sm">
+                            <button type="submit" class="absolute right-1.5 top-1.5 bottom-1.5 w-10 bg-primary hover:bg-indigo-700 text-white rounded-full flex items-center justify-center transition">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                        <!-- Search Suggestions Container (populated by JS) -->
+                    </form>
                 </div>
-                <div class="flex items-center gap-4">
+
+                <!-- Right Actions -->
+                <div class="flex items-center gap-6 flex-shrink-0">
+
+                    <!-- Location -->
+                    <a href="/pages/address-book.php" class="hidden xl:flex items-center gap-3 text-left hover:bg-gray-50 p-2 rounded-lg transition group">
+                        <div class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 group-hover:text-primary group-hover:bg-primary/10 transition">
+                            <i class="fas fa-map-marker-alt"></i>
+                        </div>
+                        <div>
+                            <span class="block text-[10px] text-gray-500 leading-tight">Delivering to</span>
+                            <span class="block text-xs font-bold text-gray-900 truncate max-w-[100px]">Kathmandu</span>
+                        </div>
+                    </a>
+
+                    <!-- Country/Currency -->
+                    <div class="hidden lg:flex items-center gap-2 border-l border-r border-gray-100 px-4 h-8">
+                        <img src="https://flagcdn.com/w20/np.png" alt="Nepal" class="w-5 h-auto rounded-sm shadow-sm">
+                        <span class="text-sm font-medium text-gray-700">NP</span>
+                    </div>
+
+                    <!-- Cart -->
+                    <a href="/pages/cart.php" class="flex items-center gap-3 hover:text-primary transition group relative">
+                        <div class="relative">
+                            <i class="fas fa-shopping-cart text-xl text-gray-700 group-hover:text-primary transition"></i>
+                            <?php if (isset($_SESSION['cart_count']) && $_SESSION['cart_count'] > 0): ?>
+                                <span class="absolute -top-2.5 -right-2.5 bg-secondary text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white shadow-sm">
+                                    <?php echo $_SESSION['cart_count']; ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="hidden sm:block">
+                            <span class="block text-xs text-gray-500">Cart</span>
+                            <span class="block text-sm font-bold text-gray-900">Items</span>
+                        </div>
+                    </a>
+
+                    <!-- Account -->
                     <?php if (isLoggedIn()): ?>
-                        <span class="text-gray-800">Welcome, <?php echo htmlspecialchars(explode(' ', $_SESSION['user_name'])[0]); ?>!</span>
-                        <?php if (isAdmin()): ?>
-                            <a href="/admin/" class="hover:text-primary transition"><i class="fas fa-cog"></i> Admin Panel</a>
-                        <?php elseif (isVendor()): ?>
-                            <a href="/seller/" class="hover:text-primary transition"><i class="fas fa-store"></i> Seller Dashboard</a>
-                        <?php else: ?>
-                            <a href="/pages/dashboard.php" class="hover:text-primary transition"><i class="fas fa-user-circle"></i> Dashboard</a>
-                        <?php endif; ?>
-                        <a href="/auth/logout.php" class="hover:text-red-500 transition"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                        <div class="relative group cursor-pointer">
+                            <a href="/pages/dashboard.php" class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold border border-primary/20">
+                                    <?php echo strtoupper(substr($_SESSION['user_name'], 0, 1)); ?>
+                                </div>
+                                <div class="hidden sm:block text-left">
+                                    <span class="block text-xs text-gray-500">Welcome</span>
+                                    <span class="block text-sm font-bold text-gray-900 max-w-[100px] truncate"><?php echo htmlspecialchars(explode(' ', $_SESSION['user_name'])[0]); ?></span>
+                                </div>
+                            </a>
+                            <!-- Dropdown -->
+                            <div class="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 hidden group-hover:block py-2">
+                                <?php if (isAdmin()): ?>
+                                    <a href="/admin/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary"><i class="fas fa-cog w-5"></i> Admin Panel</a>
+                                <?php elseif (isVendor()): ?>
+                                    <a href="/seller/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary"><i class="fas fa-store w-5"></i> Seller Panel</a>
+                                <?php endif; ?>
+                                <a href="/pages/dashboard.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary"><i class="fas fa-user-circle w-5"></i> Dashboard</a>
+                                <a href="/pages/order-history.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary"><i class="fas fa-box w-5"></i> My Orders</a>
+                                <div class="border-t border-gray-100 my-1"></div>
+                                <a href="/auth/logout.php" class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50"><i class="fas fa-sign-out-alt w-5"></i> Logout</a>
+                            </div>
+                        </div>
                     <?php else: ?>
-                        <a href="/auth/login.php" class="hover:text-primary transition"><i class="fas fa-sign-in-alt"></i> Login</a>
-                        <a href="/auth/register.php" class="hover:text-primary transition"><i class="fas fa-user-plus"></i> Register</a>
+                        <a href="/auth/login.php" class="flex items-center gap-3 hover:text-primary transition group">
+                            <div class="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 group-hover:text-primary group-hover:bg-primary/10 transition">
+                                <i class="fas fa-user"></i>
+                            </div>
+                            <div class="hidden sm:block">
+                                <span class="block text-xs text-gray-500">Account</span>
+                                <span class="block text-sm font-bold text-gray-900">Sign In</span>
+                            </div>
+                        </a>
                     <?php endif; ?>
                 </div>
             </div>
         </div>
-        
-        <nav class="main-nav container mx-auto px-4 py-4">
-            <div class="flex justify-between items-center gap-8">
-                <a href="/" class="logo text-2xl md:text-3xl font-bold text-primary whitespace-nowrap flex items-center gap-2">
-                    <i class="fas fa-shopping-bag"></i> SASTO HUB
-                </a>
-                
-                <!-- Search Bar (App Style: Grey Box) -->
-                <div class="search-bar flex-1 max-w-2xl hidden md:block">
-                    <form action="/pages/search.php" method="GET" class="relative group">
-                        <input type="text" name="q" placeholder="Search in Sasto Hub..." 
-                               class="w-full px-5 py-3 pr-12 bg-gray-100 border border-transparent rounded-lg focus:outline-none focus:bg-white focus:border-primary transition-all text-sm placeholder-gray-500">
-                        <button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-primary transition">
-                            <i class="fas fa-search text-lg"></i>
-                        </button>
-                    </form>
-                </div>
-                
-                <div class="header-icons flex items-center gap-6">
-                    <a href="/pages/cart.php" class="relative text-gray-600 hover:text-primary transition text-xl" title="Cart">
-                        <i class="fas fa-shopping-cart"></i>
-                        <?php if (isset($_SESSION['cart_count']) && $_SESSION['cart_count'] > 0): ?>
-                            <span class="absolute -top-2 -right-2 bg-secondary text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center shadow-sm">
-                                <?php echo $_SESSION['cart_count']; ?>
-                            </span>
-                        <?php endif; ?>
-                    </a>
-                    <?php if (isLoggedIn()): ?>
-                        <a href="/pages/dashboard.php" class="text-gray-600 hover:text-primary transition text-xl hidden sm:block" title="Dashboard">
-                            <i class="fas fa-user-circle"></i>
-                        </a>
-                    <?php else: ?>
-                        <a href="/auth/login.php" class="text-gray-600 hover:text-primary transition text-xl hidden sm:block" title="Login">
-                            <i class="fas fa-user"></i>
-                        </a>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </nav>
-        
-        <div class="md:hidden px-4 pb-3">
+
+        <!-- Mobile Search (Visible only on mobile) -->
+        <div class="md:hidden px-4 pb-4 border-b border-gray-100">
             <form action="/pages/search.php" method="GET" class="relative">
-                <input type="text" name="q" placeholder="Search..." 
-                       class="w-full px-4 py-2 pr-10 bg-gray-100 border border-transparent rounded-lg focus:outline-none focus:bg-white focus:border-primary text-sm">
-                <button type="submit" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+                <input type="text" name="q" placeholder="Search products..."
+                       class="w-full pl-10 pr-4 py-2.5 bg-gray-100 border-none rounded-lg focus:ring-1 focus:ring-primary text-sm">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
                     <i class="fas fa-search"></i>
-                </button>
+                </span>
             </form>
         </div>
     </header>
-    
-    <div class="hidden md:block bg-gray-100 border-b">
+
+    <!-- Secondary Nav (Categories Strip) -->
+    <div class="hidden md:block border-b border-gray-200 bg-white">
         <div class="container mx-auto px-4">
-            <div class="flex gap-8 py-2 text-sm font-medium flex-wrap">
-                <a href="/" class="text-gray-700 hover:text-primary"><i class="fas fa-home"></i> Home</a>
-                <a href="/pages/products.php" class="text-gray-700 hover:text-primary"><i class="fas fa-th"></i> All Products</a>
-                <a href="/pages/products.php?featured=1" class="text-gray-700 hover:text-primary"><i class="fas fa-star"></i> Featured</a>
-                <a href="/pages/products.php?sale=1" class="text-red-600 hover:text-red-700"><i class="fas fa-fire"></i> Flash Sale</a>
-                <?php if (isLoggedIn() && !isVendor() && !isAdmin()): ?>
-                    <a href="/auth/become-vendor.php" class="text-gray-700 hover:text-primary"><i class="fas fa-store"></i> Become Vendor</a>
-                <?php endif; ?>
+            <div class="flex items-center gap-8">
+                <!-- All Categories Dropdown Trigger -->
+                <div class="relative group py-3 cursor-pointer">
+                    <div class="flex items-center gap-2 text-sm font-bold text-gray-900">
+                        <i class="fas fa-th-large text-primary"></i>
+                        <span>All Categories</span>
+                        <i class="fas fa-chevron-down text-xs text-gray-400 group-hover:text-primary transition"></i>
+                    </div>
+                    <!-- Dropdown Content (Mock for now, could be dynamic) -->
+                    <div class="absolute top-full left-0 w-56 bg-white shadow-xl rounded-b-xl border border-gray-100 hidden group-hover:block z-40 py-2">
+                        <a href="/pages/products.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary">Browse All</a>
+                        <a href="/pages/products.php?sort=newest" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary">New Arrivals</a>
+                        <a href="/pages/products.php?featured=1" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-primary">Featured</a>
+                    </div>
+                </div>
+
+                <!-- Nav Links -->
+                <div class="flex items-center gap-6 text-sm font-medium text-gray-600">
+                    <a href="/pages/products.php?category=electronics" class="hover:text-primary transition">Electronics</a>
+                    <a href="/pages/products.php?category=fashion" class="hover:text-primary transition">Fashion</a>
+                    <a href="/pages/products.php?category=home" class="hover:text-primary transition">Home & Living</a>
+                    <a href="/pages/products.php?featured=1" class="hover:text-primary transition">Featured</a>
+                    <a href="/pages/products.php?sale=1" class="text-red-600 hover:text-red-700 flex items-center gap-1">
+                        <i class="fas fa-bolt"></i> Flash Deals
+                    </a>
+                </div>
+
+                <div class="flex-1"></div>
+
+                <!-- Right Side Links -->
+                <div class="flex items-center gap-6 text-sm font-medium text-gray-500">
+                     <?php if (isLoggedIn() && !isVendor() && !isAdmin()): ?>
+                        <a href="/auth/become-vendor.php" class="hover:text-primary transition">Become a Seller</a>
+                    <?php endif; ?>
+                    <a href="tel:<?php echo htmlspecialchars($contact_phone); ?>" class="hover:text-primary transition flex items-center gap-1">
+                        <i class="fas fa-headset"></i> Support
+                    </a>
+                </div>
             </div>
         </div>
     </div>
-    
+
+    <!-- Mobile Bottom Nav -->
     <nav class="bottom-nav">
         <a href="/" class="nav-item <?php echo (strpos($_SERVER['REQUEST_URI'], 'index.php') !== false || $_SERVER['REQUEST_URI'] === '/') ? 'active' : ''; ?>">
             <i class="fas fa-home"></i>
             <span>Home</span>
         </a>
         <a href="/pages/products.php" class="nav-item <?php echo (strpos($_SERVER['REQUEST_URI'], 'products') !== false) ? 'active' : ''; ?>">
-            <i class="fas fa-th"></i>
+            <i class="fas fa-th-large"></i>
             <span>Shop</span>
         </a>
         <a href="/pages/search.php" class="nav-item">
@@ -267,64 +312,64 @@
             </a>
         <?php endif; ?>
     </nav>
-    
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const searchInputs = document.querySelectorAll('input[name="q"]');
-            
+
             searchInputs.forEach(input => {
                 // Create suggestions container
                 const container = document.createElement('div');
                 container.id = 'search-suggestions-' + Math.random().toString(36).substr(2, 9);
-                container.className = 'absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-b-lg shadow-lg z-50 hidden max-h-96 overflow-y-auto';
+                container.className = 'absolute top-full left-0 right-0 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 hidden max-h-96 overflow-y-auto mt-2';
                 input.parentNode.appendChild(container);
-                
+
                 let timeout = null;
-                
+
                 input.addEventListener('input', function() {
                     const query = this.value.trim();
                     const currentContainer = this.parentNode.querySelector('div[id^="search-suggestions-"]');
-                    
+
                     clearTimeout(timeout);
-                    
+
                     if (query.length < 2) {
                         currentContainer.classList.add('hidden');
                         currentContainer.innerHTML = '';
                         return;
                     }
-                    
+
                     timeout = setTimeout(() => {
                         fetch(`/api/search_suggestions.php?q=${encodeURIComponent(query)}`)
                             .then(response => response.json())
                             .then(data => {
                                 if ((data.categories && data.categories.length > 0) || (data.products && data.products.length > 0)) {
                                     let html = '';
-                                    
+
                                     // Categories
                                     if (data.categories.length > 0) {
-                                        html += '<div class="bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-500 uppercase">Categories</div>';
+                                        html += '<div class="bg-gray-50 px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Categories</div>';
                                         data.categories.forEach(cat => {
-                                            const imageHtml = cat.image 
-                                                ? `<img src="${cat.image}" class="w-8 h-8 object-cover rounded-full mr-3 border border-gray-200">`
-                                                : `<div class="w-8 h-8 bg-gray-100 rounded-full mr-3 flex items-center justify-center text-gray-400 border border-gray-200"><i class="fas fa-th text-xs"></i></div>`;
-                                                
+                                            const imageHtml = cat.image
+                                                ? `<img src="${cat.image}" class="w-8 h-8 object-cover rounded-lg mr-3 border border-gray-200">`
+                                                : `<div class="w-8 h-8 bg-white rounded-lg mr-3 flex items-center justify-center text-gray-400 border border-gray-200"><i class="fas fa-th text-xs"></i></div>`;
+
                                             html += `
-                                                <a href="/pages/products.php?slug=${cat.slug}" class="flex items-center px-4 py-2 hover:bg-gray-100 text-gray-800 border-b last:border-0">
+                                                <a href="/pages/products.php?slug=${cat.slug}" class="flex items-center px-5 py-3 hover:bg-gray-50 text-gray-800 border-b border-gray-50 last:border-0 transition">
                                                     ${imageHtml}
                                                     <span class="font-medium">${cat.name}</span>
                                                 </a>
                                             `;
                                         });
                                     }
-                                    
+
                                     // Products
                                     if (data.products.length > 0) {
-                                        html += '<div class="bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-500 uppercase">Products</div>';
+                                        html += '<div class="bg-gray-50 px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Products</div>';
                                         data.products.forEach(prod => {
                                             const price = new Intl.NumberFormat('en-NP', { style: 'currency', currency: 'NPR' }).format(prod.sale_price || prod.price);
                                             html += `
-                                                <a href="/pages/product-detail.php?slug=${prod.slug}" class="flex items-center px-4 py-2 hover:bg-gray-100 border-b last:border-0">
-                                                    <img src="${prod.image_path || 'https://via.placeholder.com/40'}" class="w-10 h-10 object-cover rounded mr-3">
+                                                <a href="/pages/product-detail.php?slug=${prod.slug}" class="flex items-center px-5 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0 transition">
+                                                    <img src="${prod.image_path || 'https://via.placeholder.com/40'}" class="w-10 h-10 object-cover rounded-lg mr-3 border border-gray-200">
                                                     <div>
                                                         <div class="text-sm font-medium text-gray-900">${prod.name}</div>
                                                         <div class="text-xs text-primary font-bold">${price}</div>
@@ -333,7 +378,7 @@
                                             `;
                                         });
                                     }
-                                    
+
                                     currentContainer.innerHTML = html;
                                     currentContainer.classList.remove('hidden');
                                 } else {
@@ -343,7 +388,7 @@
                             .catch(err => console.error('Search error:', err));
                     }, 300);
                 });
-                
+
                 // Hide on click outside
                 document.addEventListener('click', function(e) {
                     if (!input.contains(e.target) && !container.contains(e.target)) {
