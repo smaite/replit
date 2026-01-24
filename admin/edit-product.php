@@ -150,10 +150,9 @@ if (isset($_GET['delete_image'])) {
             }
 
             // 3. Update products table main image
-            $main_image = $primary ? $primary['image_path'] : null; // Or a default placeholder if you prefer
-            $stmt = $conn->prepare("UPDATE products SET image = ? WHERE id = ?");
-            $stmt->execute([$main_image, $product_id]);
-
+            // Note: We are using product_images table for all images, so we don't need to update a column in products table
+            // unless we want to cache the primary image path there. For now, removing to fix error.
+            
             $success = 'Image deleted successfully.';
 
             // Reload images
@@ -175,14 +174,6 @@ if (isset($_GET['set_primary'])) {
 
         $stmt = $conn->prepare("UPDATE product_images SET is_primary = 1 WHERE id = ? AND product_id = ?");
         $stmt->execute([$image_id, $product_id]);
-
-        $stmt = $conn->prepare("SELECT image_path FROM product_images WHERE id = ?");
-        $stmt->execute([$image_id]);
-        $img = $stmt->fetch();
-        if ($img) {
-            $stmt = $conn->prepare("UPDATE products SET image = ? WHERE id = ?");
-            $stmt->execute([$img['image_path'], $product_id]);
-        }
 
         $success = 'Primary image updated.';
 
